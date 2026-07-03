@@ -4,453 +4,539 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>武侠·崛起 — 放置养成</title>
+<title>武侠·崛起</title>
 <style>
 *{ margin:0; padding:0; box-sizing:border-box; }
-@font-face{ font-family:'Wuxia'; src:local('STKaiti'),local('KaiTi'),local('Noto Serif SC'),serif; }
 body{
-    background:#0a0806;
-    color:#d4c5a9;
-    font-family:'Wuxia','KaiTi','STKaiti','Noto Serif SC',serif;
+    background:#0d0806; color:#d4c5a9;
+    font-family:'STKaiti','KaiTi','Noto Serif SC',serif;
     min-height:100vh; overflow-x:hidden;
-    background-image:radial-gradient(ellipse at 50% 0%, rgba(80,40,20,0.3) 0%, transparent 70%);
+    background-image:
+        radial-gradient(ellipse at 50% 0%, rgba(100,50,20,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 20% 80%, rgba(50,30,15,0.1) 0%, transparent 50%);
     display:flex; justify-content:center;
 }
-#game{
-    width:100%; max-width:420px; min-height:100vh;
-    position:relative; padding:20px 16px 100px;
-}
-/* 顶部信息栏 */
-.header{
-    text-align:center; padding:16px 0; position:relative;
-    border-bottom:1px solid rgba(212,197,169,0.15);
-    margin-bottom:16px;
-}
-.header h1{
-    font-size:28px; font-weight:700;
-    background:linear-gradient(135deg, #f0d6a8, #d4a574, #f0d6a8);
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-    letter-spacing:8px; text-shadow:0 0 40px rgba(212,165,116,0.3);
-}
-.header .sub{ font-size:12px; color:#8a7a6a; letter-spacing:4px; margin-top:4px; }
+#app{ width:100%; max-width:420px; min-height:100vh; padding:0 14px 120px; position:relative; }
 
-/* 境界显示 */
-.realm-box{
-    text-align:center; padding:20px; margin-bottom:16px;
-    background:linear-gradient(180deg, rgba(212,197,169,0.05) 0%, transparent 100%);
-    border:1px solid rgba(212,197,169,0.1);
-    border-radius:16px; position:relative; overflow:hidden;
+/* === 水墨动画背景 === */
+#bgCanvas{
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    z-index:0; pointer-events:none; opacity:0.3;
 }
-.realm-box::before{
-    content:''; position:absolute; top:-50%; left:-50%;
-    width:200%; height:200%;
-    background:conic-gradient(from 0deg, transparent, rgba(212,165,116,0.03), transparent, rgba(212,165,116,0.03), transparent);
-    animation:revolve 8s linear infinite;
+
+/* === 顶部 === */
+.top-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 0 8px; position:relative; z-index:2;
 }
-@keyframes revolve{ 100%{ transform:rotate(360deg); } }
-.realm-name{ font-size:22px; font-weight:700; letter-spacing:4px; position:relative; }
-.realm-name .level{ font-size:14px; color:#8a7a6a; margin-left:8px; }
-.realm-name .progress-text{ font-size:12px; color:#a08a70; display:block; margin-top:6px; }
-.progress-bar{
-    width:100%; height:6px; background:rgba(212,197,169,0.1);
-    border-radius:3px; margin-top:12px; overflow:hidden; position:relative;
+.top-bar .title{
+    font-size:20px; font-weight:700; letter-spacing:4px;
+    background:linear-gradient(135deg, #f0d6a8, #d4a574);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.top-bar .version{
+    font-size:10px; color:#5a4a3a; background:rgba(212,197,169,0.05);
+    padding:2px 8px; border-radius:4px; border:1px solid rgba(212,197,169,0.08);
+}
+
+/* === 人物立绘区 === */
+.portrait-area{
+    position:relative; z-index:2; text-align:center;
+    margin:0 -14px; padding:20px 0;
+    background:linear-gradient(180deg, rgba(212,165,116,0.03) 0%, transparent 100%);
+    border-top:1px solid rgba(212,197,169,0.05);
+    border-bottom:1px solid rgba(212,197,169,0.05);
+    overflow:hidden;
+}
+.portrait-container{
+    position:relative; width:140px; height:160px; margin:0 auto;
+}
+.portrait-figure{
+    width:100%; height:100%; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:64px; transition:all 0.5s ease;
+    position:relative; z-index:2;
+}
+.portrait-glow{
+    position:absolute; inset:-15px; border-radius:50%;
+    background:conic-gradient(from 0deg, transparent, rgba(212,165,116,0.1), transparent, rgba(212,165,116,0.1), transparent);
+    animation:glowSpin 4s linear infinite;
+    z-index:1;
+}
+@keyframes glowSpin{ 100%{ transform:rotate(360deg); } }
+.portrait-name{ font-size:18px; font-weight:700; margin-top:8px; letter-spacing:2px; }
+.portrait-title{ font-size:12px; color:#8a7a6a; margin-top:2px; letter-spacing:3px; }
+
+/* === 境界进度 === */
+.realm-section{
+    position:relative; z-index:2; padding:16px 0; text-align:center;
+}
+.realm-badge{
+    display:inline-flex; align-items:center; gap:10px;
+    padding:8px 20px; border-radius:20px; font-size:14px;
+    border:1px solid; letter-spacing:2px;
+}
+.progress-container{ padding:16px 0 8px; }
+.progress-label{
+    display:flex; justify-content:space-between; font-size:11px;
+    color:#6a5a4a; margin-bottom:6px;
+}
+.progress-track{
+    width:100%; height:8px; background:rgba(212,197,169,0.06);
+    border-radius:4px; overflow:hidden;
 }
 .progress-fill{
-    height:100%; border-radius:3px;
-    background:linear-gradient(90deg, #d4a574, #f0d6a8);
-    transition:width 0.3s ease; width:0%;
+    height:100%; border-radius:4px;
+    background:linear-gradient(90deg, #8a6a4a, #d4a574, #f0d6a8);
+    transition:width 0.5s ease; width:0%;
+    box-shadow:0 0 10px rgba(212,165,116,0.3);
 }
 
-/* 属性面板 */
-.stats-grid{
-    display:grid; grid-template-columns: repeat(3,1fr); gap:8px; margin-bottom:16px;
+/* === 属性面板 === */
+.stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; position:relative; z-index:2; margin:16px 0; }
+.stat-item{
+    background:rgba(212,197,169,0.02); border:1px solid rgba(212,197,169,0.06);
+    border-radius:10px; padding:10px 4px; text-align:center;
 }
-.stat-card{
-    background:rgba(212,197,169,0.03); border:1px solid rgba(212,197,169,0.08);
-    border-radius:12px; padding:12px 8px; text-align:center;
-}
-.stat-card .icon{ font-size:20px; display:block; margin-bottom:4px; }
-.stat-card .value{ font-size:18px; font-weight:700; letter-spacing:1px; }
-.stat-card .label{ font-size:10px; color:#8a7a6a; margin-top:2px; }
+.stat-item .s-icon{ font-size:16px; }
+.stat-item .s-val{ font-size:16px; font-weight:700; margin-top:2px; }
+.stat-item .s-lbl{ font-size:9px; color:#6a5a4a; margin-top:2px; }
 
-/* 行动按钮 */
-.actions{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
-.btn{
-    padding:14px; border:1px solid rgba(212,197,169,0.2);
-    border-radius:12px; background:rgba(212,197,169,0.05);
-    color:#d4c5a9; font-family:inherit; font-size:14px;
-    cursor:pointer; transition:all 0.2s; letter-spacing:2px;
-    text-align:center; position:relative; overflow:hidden;
+/* === 武功 === */
+.section-title{
+    font-size:13px; color:#8a7a6a; letter-spacing:3px;
+    margin:16px 0 8px; position:relative; z-index:2;
 }
-.btn:active{ transform:scale(0.96); background:rgba(212,197,169,0.1); }
-.btn .sub-text{ display:block; font-size:10px; color:#8a7a6a; letter-spacing:1px; margin-top:4px; }
-.btn-primary{ border-color:rgba(212,165,116,0.3); background:rgba(212,165,116,0.08); }
-.btn-primary:active{ background:rgba(212,165,116,0.15); }
-.btn-full{ grid-column:span 2; }
+.section-title::after{
+    content:''; display:block; width:40px; height:1px;
+    background:rgba(212,197,169,0.15); margin-top:4px;
+}
+.skills{
+    display:grid; grid-template-columns:1fr 1fr; gap:8px; position:relative; z-index:2;
+}
+.skill-card{
+    background:rgba(212,197,169,0.02); border:1px solid rgba(212,197,169,0.08);
+    border-radius:10px; padding:12px; cursor:pointer; transition:all 0.2s;
+}
+.skill-card:active{ transform:scale(0.96); background:rgba(212,197,169,0.06); }
+.skill-card .sk-icon{ font-size:24px; margin-bottom:6px; }
+.skill-card .sk-name{ font-size:13px; font-weight:600; letter-spacing:1px; }
+.skill-card .sk-desc{ font-size:10px; color:#6a5a4a; margin-top:4px; }
+.skill-card .sk-gain{ font-size:10px; color:#d4a574; margin-top:4px; }
+.skill-card .sk-cd{ font-size:9px; color:#5a4a3a; margin-top:2px; }
+.skill-card.locked{ opacity:0.4; }
 
-/* 日志 */
-.log-section{ margin-top:16px; }
-.log-section h3{ font-size:14px; color:#8a7a6a; margin-bottom:8px; letter-spacing:2px; }
+/* === 日志 === */
+.log-section{ position:relative; z-index:2; margin-top:16px; }
 .log-box{
-    background:rgba(0,0,0,0.2); border-radius:12px;
-    padding:12px; height:180px; overflow-y:auto;
-    font-size:12px; line-height:1.8;
+    background:rgba(0,0,0,0.15); border-radius:10px;
+    padding:10px; height:150px; overflow-y:auto; font-size:11px; line-height:1.8;
 }
-.log-box::-webkit-scrollbar{ width:3px; }
-.log-box::-webkit-scrollbar-thumb{ background:rgba(212,197,169,0.2); border-radius:2px; }
-.log-entry{ border-bottom:1px solid rgba(212,197,169,0.05); padding:4px 0; }
-.log-entry .time{ color:#5a4a3a; margin-right:6px; }
-.log-entry .special{ color:#f0d6a8; }
+.log-box::-webkit-scrollbar{ width:2px; }
+.log-box::-webkit-scrollbar-thumb{ background:rgba(212,197,169,0.15); border-radius:2px; }
+.le{ border-bottom:1px solid rgba(212,197,169,0.03); padding:2px 0; }
+.le .tm{ color:#4a3a2a; }
+.le .hl{ color:#f0d6a8; }
+.le .ach{ color:#ffd700; }
 
-/* 动画效果 */
-.fade-in{ animation:fadeIn 0.5s ease; }
-@keyframes fadeIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
-
-.pulse{ animation:pulse 2s ease-in-out infinite; }
-@keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.6; } }
-
-.float-up{
-    position:fixed; pointer-events:none; font-size:18px;
-    animation:floatUp 1.5s ease-out forwards;
-    z-index:1000;
-}
+/* === 浮动文字 === */
 @keyframes floatUp{
-    0%{ opacity:1; transform:translateY(0); }
-    100%{ opacity:0; transform:translateY(-60px); }
+    0%{ opacity:1; transform:translateY(0) scale(1); }
+    100%{ opacity:0; transform:translateY(-80px) scale(1.3); }
+}
+.floating{
+    position:fixed; pointer-events:none; z-index:999;
+    font-size:20px; font-weight:700; letter-spacing:2px;
+    animation:floatUp 1.8s ease-out forwards;
 }
 
-/* 成就弹窗 */
+/* === 弹窗 === */
 .modal-overlay{
-    position:fixed; inset:0; background:rgba(0,0,0,0.7);
+    position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:100;
     display:flex; align-items:center; justify-content:center;
-    z-index:100; animation:fadeIn 0.3s ease;
+    animation:fadeIn 0.3s ease; backdrop-filter:blur(4px);
 }
+@keyframes fadeIn{ from{ opacity:0; } to{ opacity:1; } }
 .modal{
-    background:#1a1410; border:1px solid rgba(212,165,116,0.3);
-    border-radius:20px; padding:32px 24px; max-width:340px;
-    text-align:center; position:relative;
+    background:#18120e; border:1px solid rgba(212,165,116,0.25);
+    border-radius:16px; padding:28px 20px; max-width:320px; width:90%;
+    text-align:center; animation:modalIn 0.3s ease;
 }
-.modal h2{ font-size:20px; margin-bottom:8px; }
-.modal p{ font-size:14px; color:#a08a70; line-height:1.6; margin-bottom:16px; }
-.modal .btn{ width:100%; }
+@keyframes modalIn{ from{ transform:scale(0.95); opacity:0; } to{ transform:scale(1); opacity:1; } }
+.modal .m-icon{ font-size:48px; margin-bottom:12px; }
+.modal h2{ font-size:18px; margin-bottom:8px; letter-spacing:2px; }
+.modal p{ font-size:13px; color:#a08a70; line-height:1.7; margin-bottom:16px; }
+.modal-btn{
+    padding:10px 32px; border:1px solid rgba(212,165,116,0.3);
+    border-radius:8px; background:rgba(212,165,116,0.08);
+    color:#d4c5a9; font-family:inherit; font-size:14px; letter-spacing:2px;
+    cursor:pointer; transition:all 0.2s;
+}
+.modal-btn:active{ background:rgba(212,165,116,0.15); transform:scale(0.96); }
 </style>
 </head>
 <body>
-<div id="game">
-    <div class="header">
-        <h1>武·侠·崛·起</h1>
-        <div class="sub">— 日复一日 · 终成大器 —</div>
+
+<canvas id="bgCanvas"></canvas>
+
+<div id="app">
+    <div class="top-bar">
+        <div class="title">⚔️ 武侠·崛起</div>
+        <div class="version">v1.2</div>
     </div>
 
-    <div class="realm-box" id="realmBox">
-        <div class="realm-name" id="realmName">
-            初入江湖<span class="level">Lv.1</span>
-            <span class="progress-text" id="progressText">修为 0 / 100</span>
+    <!-- 人物立绘 -->
+    <div class="portrait-area">
+        <div class="portrait-container">
+            <div class="portrait-glow"></div>
+            <div class="portrait-figure" id="portraitFigure">🧘</div>
         </div>
-        <div class="progress-bar">
-            <div class="progress-fill" id="progressFill"></div>
+        <div class="portrait-name" id="portraitName">无名少年</div>
+        <div class="portrait-title" id="portraitTitle">初入江湖</div>
+    </div>
+
+    <!-- 境界进度 -->
+    <div class="realm-section">
+        <div class="realm-badge" id="realmBadge" style="border-color:#8a7a6a40;color:#8a7a6a">
+            🌱 初入江湖
+        </div>
+        <div class="progress-container">
+            <div class="progress-label">
+                <span id="progressCurrent">功力 0</span>
+                <span id="progressNext">下一境: 100</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
         </div>
     </div>
 
-    <div class="stats-grid" id="statsGrid">
-        <div class="stat-card"><span class="icon">⚡</span><div class="value" id="statPower">0</div><div class="label">功力</div></div>
-        <div class="stat-card"><span class="icon">🧘</span><div class="value" id="statCultivation">0</div><div class="label">修为</div></div>
-        <div class="stat-card"><span class="icon">📅</span><div class="value" id="statDays">第1日</div><div class="label">修炼天数</div></div>
+    <!-- 属性 -->
+    <div class="stats">
+        <div class="stat-item"><div class="s-icon">⚡</div><div class="s-val" id="sPower">0</div><div class="s-lbl">功力</div></div>
+        <div class="stat-item"><div class="s-icon">🧘</div><div class="s-val" id="sCult">0</div><div class="s-lbl">修为</div></div>
+        <div class="stat-item"><div class="s-icon">📅</div><div class="s-val" id="sDays">1</div><div class="s-lbl">天数</div></div>
+        <div class="stat-item"><div class="s-icon">🏆</div><div class="s-val" id="sAch">0</div><div class="s-lbl">成就</div></div>
     </div>
 
-    <div class="actions" id="actions">
-        <button class="btn btn-primary" onclick="act('打坐')">
-            🧘 打坐修行
-            <span class="sub-text">静心凝神 · 增长修为</span>
-        </button>
-        <button class="btn btn-primary" onclick="act('练功')">
-            ⚔️ 勤练武功
-            <span class="sub-text">拳掌刀剑 · 提升功力</span>
-        </button>
-        <button class="btn" onclick="act('悟道')">
-            📖 参悟大道
-            <span class="sub-text">机缘悟性 · 突破瓶颈</span>
-        </button>
-        <button class="btn" onclick="act('游历')">
-            🌄 云游四海
-            <span class="sub-text">奇遇江湖 · 机缘巧合</span>
-        </button>
-    </div>
+    <!-- 武功修炼 -->
+    <div class="section-title">📜 修炼功法</div>
+    <div class="skills" id="skillsList"></div>
 
+    <!-- 日志 -->
     <div class="log-section">
-        <h3>📜 修炼日志</h3>
-        <div class="log-box" id="logBox">
-            <div class="log-entry">初入江湖，一切从零开始...</div>
-        </div>
+        <div class="section-title">📖 修炼日志</div>
+        <div class="log-box" id="logBox"><div class="le">初入江湖，一切从零开始...</div></div>
     </div>
 </div>
 
 <script>
-// ======== 游戏核心数据 ========
+// ======== 水墨背景 ========
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+function resizeCanvas(){
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+}
+resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+class Particle{
+    constructor(){
+        this.reset();
+    }
+    reset(){
+        this.x = Math.random() * canvas.width;
+        this.y = -10;
+        this.size = Math.random() * 3 + 1;
+        this.speed = Math.random() * 0.3 + 0.1;
+        this.alpha = Math.random() * 0.3 + 0.1;
+        this.waver = Math.random() * Math.PI * 2;
+    }
+    update(){
+        this.y += this.speed;
+        this.waver += 0.01;
+        this.x += Math.sin(this.waver) * 0.3;
+        if(this.y > canvas.height + 10) this.reset();
+    }
+    draw(){
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(180,150,120,${this.alpha})`;
+        ctx.fill();
+    }
+}
+const particles = Array.from({length:30}, ()=>new Particle());
+function animateBg(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{ p.update(); p.draw(); });
+    requestAnimationFrame(animateBg);
+}
+animateBg();
+
+// ======== 游戏数据 ========
 const REALMS = [
-    { name:'初入江湖', minPower:0, color:'#8a7a6a' },
-    { name:'后起之秀', minPower:100, color:'#a08a70' },
-    { name:'小有名气', minPower:500, color:'#c4a882' },
-    { name:'武林新秀', minPower:2000, color:'#d4a574' },
-    { name:'江湖高手', minPower:5000, color:'#e8c088' },
-    { name:'一代宗师', minPower:15000, color:'#f0d6a8' },
-    { name:'武林泰斗', minPower:40000, color:'#ffe0b0' },
-    { name:'绝世高手', minPower:100000, color:'#ffd700' },
-    { name:'陆地神仙', minPower:300000, color:'#ffaa00' },
-    { name:'破碎虚空', minPower:1000000, color:'#ff6600' },
+    { name:'初入江湖', minPower:0, icon:'🌱', emoji:'🧘', title:'无名少年', color:'#8a7a6a' },
+    { name:'后起之秀', minPower:100, icon:'🌿', emoji:'🏃', title:'习武少年', color:'#a08a70' },
+    { name:'小有名气', minPower:500, icon:'🌳', emoji:'⚔️', title:'武林新丁', color:'#c4a882' },
+    { name:'武林新秀', minPower:2000, icon:'🔥', emoji:'🤺', title:'少年英侠', color:'#d4a574' },
+    { name:'江湖高手', minPower:8000, icon:'⚡', emoji:'🦅', title:'江湖豪侠', color:'#e8c088' },
+    { name:'一代宗师', minPower:25000, icon:'💫', emoji:'🐉', title:'一代宗师', color:'#f0d6a8' },
+    { name:'武林泰斗', minPower:60000, icon:'🌌', emoji:'🐲', title:'武林泰斗', color:'#ffd700' },
+    { name:'绝世高手', minPower:150000, icon:'☀️', emoji:'🗡️', title:'绝世剑仙', color:'#ffaa00' },
+    { name:'陆地神仙', minPower:500000, icon:'👁️', emoji:'🧙', title:'陆地神仙', color:'#ff8800' },
+    { name:'破碎虚空', minPower:1500000, icon:'🌀', emoji:'🌪️', title:'破碎虚空', color:'#ff4400' },
 ];
 
-const WUXIA_QUOTES = [
-    '欲练神功，必先静心', '道法自然，万法归一', '千里之行始于足下',
-    '天行健，君子以自强不息', '不积跬步无以至千里', '持之以恒，金石可镂',
-    '大巧不工，重剑无锋', '他强由他强，清风拂山岗', '无招胜有招',
-    '人在江湖，身不由己', '侠之大者，为国为民', '天下武功，唯快不破',
+const SKILLS = [
+    { id:'meditate', name:'吐纳心法', icon:'🧘', desc:'静心凝神，调理内息', unlock:0, gain:(g)=>({power:0,cult:5+Math.floor(Math.random()*10+g*0.1)}), cd:0, cdMax:0 },
+    { id:'practice', name:'基础拳法', icon:'👊', desc:'扎马步，练拳法', unlock:0, gain:(g)=>({power:8+Math.floor(Math.random()*12+g*0.05),cult:2}), cd:0, cdMax:0 },
+    { id:'enlighten', name:'参悟大道', icon:'📖', desc:'研读道经，以求顿悟', unlock:1, gain:(g)=>({power:5+Math.floor(Math.random()*8),cult:10+Math.floor(Math.random()*20+g*0.2)}), cd:0, cdMax:3 },
+    { id:'adventure', name:'云游四海', icon:'🌄', desc:'走遍山川，寻求奇遇', unlock:2, gain:(g)=>({power:20+Math.floor(Math.random()*30),cult:8+Math.floor(Math.random()*15)}), cd:0, cdMax:5 },
+    { id:'sword', name:'独孤九剑', icon:'⚔️', desc:'剑法精髓，破尽天下武学', unlock:3, gain:(g)=>({power:50+Math.floor(Math.random()*60+g*0.1),cult:15}), cd:0, cdMax:8 },
+    { id:'inner', name:'易筋经', icon:'🌀', desc:'少林无上内功，脱胎换骨', unlock:5, gain:(g)=>({power:30+Math.floor(Math.random()*40),cult:40+Math.floor(Math.random()*50+g*0.3)}), cd:0, cdMax:10 },
 ];
 
 const ADVENTURES = [
-    { text:'在瀑布下悟道，修为大进！', power:0, cult:30 },
-    { text:'击败山贼，为民除害', power:20, cult:5 },
-    { text:'得高人指点，功力大增', power:40, cult:15 },
-    { text:'偶遇灵药，服之功力倍增', power:50, cult:10 },
-    { text:'在山洞中发现失传秘籍', power:60, cult:20 },
-    { text:'救助一位老者，获赠内功心法', power:35, cult:25 },
-    { text:'与高手切磋，领悟新的武学境界', power:45, cult:15 },
-    { text:'在绝境中突破自我', power:55, cult:20 },
+    { text:'在瀑布下悟道，修为大进！', p:0, c:30 },
+    { text:'击败山贼，为民除害！', p:25, c:5 },
+    { text:'得高人指点，功力大增！', p:45, c:15 },
+    { text:'偶遇灵药，服之功力倍增！', p:55, c:10 },
+    { text:'在山洞中发现失传秘籍！', p:65, c:20 },
+    { text:'救助一位老者，获赠内功心法！', p:40, c:28 },
+    { text:'与高手切磋，领悟武学真谛！', p:50, c:18 },
+    { text:'在绝境中突破自我！', p:60, c:22 },
+    { text:'于悬崖边悟得轻功要诀！', p:35, c:35 },
+    { text:'夜观星象，顿悟天地大道！', p:20, c:50 },
+];
+
+const ACHIEVEMENTS = [
+    { id:'a1', name:'初出茅庐', desc:'第一次修炼', check:g=>g.totalActions>=1, reward:50 },
+    { id:'a2', name:'持之以恒', desc:'修炼10天', check:g=>g.days>=10, reward:100 },
+    { id:'a3', name:'百日筑基', desc:'修炼100天', check:g=>g.days>=100, reward:500 },
+    { id:'a4', name:'小有所成', desc:'功力达到1000', check:g=>g.power>=1000, reward:200 },
+    { id:'a5', name:'一代宗师', desc:'功力达到10000', check:g=>g.power>=10000, reward:1000 },
+    { id:'a6', name:'武林传说', desc:'功力达到100000', check:g=>g.power>=100000, reward:5000 },
+    { id:'a7', name:'崭露头角', desc:'达到小有名气境界', check:g=>g.realm>=2, reward:300 },
+    { id:'a8', name:'宗师风范', desc:'达到一代宗师境界', check:g=>g.realm>=5, reward:2000 },
+    { id:'a9', name:'百炼成钢', desc:'完成100次行动', check:g=>g.totalActions>=100, reward:500 },
+    { id:'a10', name:'千锤百炼', desc:'完成500次行动', check:g=>g.totalActions>=500, reward:2000 },
+    { id:'a11', name:'天选之人', desc:'完成1000次行动', check:g=>g.totalActions>=1000, reward:5000 },
+    { id:'a12', name:'以武入道', desc:'达到绝世高手境界', check:g=>g.realm>=7, reward:10000 },
 ];
 
 // ======== 游戏状态 ========
-let game = loadGame();
+let g = loadGame();
+let floatingId = 0;
 
 function defaultGame(){
     return {
         power:0, cultivation:0, days:1,
-        realm:0, log:['初入江湖，一切从零开始...'],
-        totalActions:0, achievements:[],
+        realm:0, totalActions:0,
+        achievements:[], logs:['初入江湖，一切从零开始...'],
         lastSave:Date.now()
     };
 }
 
 function loadGame(){
     try{
-        const saved = localStorage.getItem('wuxiaRising');
-        if(saved) return JSON.parse(saved);
+        const s = localStorage.getItem('wuxia2');
+        if(s) return JSON.parse(s);
     }catch(e){}
     return defaultGame();
 }
 
-function saveGame(){
-    game.lastSave = Date.now();
-    try{ localStorage.setItem('wuxiaRising', JSON.stringify(game)); }catch(e){}
+function save(){
+    g.lastSave = Date.now();
+    try{ localStorage.setItem('wuxia2', JSON.stringify(g)); }catch(e){}
 }
 
-// ======== 核心逻辑 ========
-function getRealm(){
-    for(let i=REALMS.length-1; i>=0; i--){
-        if(game.power >= REALMS[i].minPower) return i;
-    }
+// ======== 核心 ========
+function getRealmIdx(){
+    for(let i=REALMS.length-1;i>=0;i--) if(g.power>=REALMS[i].minPower) return i;
     return 0;
 }
 
-function checkRealmUp(){
-    const newRealm = getRealm();
-    if(newRealm > game.realm){
-        const oldRealm = game.realm;
-        game.realm = newRealm;
-        addLog(`✨ 突破！踏入「${REALMS[newRealm].name}」境界！`, 'special');
-        showModal('境界突破！', `历经${game.days}日苦修，你终于踏入「${REALMS[newRealm].name}」之境！`);
-        // 境界突破奖励
-        const bonus = game.power * 0.1;
-        game.power += Math.floor(bonus);
-        addLog(`🎉 突破奖励：功力 +${Math.floor(bonus)}`);
-        return true;
-    }
-    return false;
-}
+function doAction(skillId){
+    const skill = SKILLS.find(s=>s.id===skillId);
+    if(!skill) return;
+    const realm = getRealmIdx();
+    if(skill.unlock > realm){ log(`🔒 ${skill.name} 需要达到「${REALMS[skill.unlock].name}」境界`); return; }
+    if(skill.cd > 0){ log(`⏳ ${skill.name} 还需冷却 ${skill.cd} 回合`); return; }
 
-function act(type){
-    const actions = {
-        '打坐': function(){
-            const gain = Math.floor(5 + Math.random() * 10 + game.days * 0.1);
-            game.cultivation += gain;
-            addLog(`打坐修行，修为 +${gain}。心若冰清，天塌不惊。`);
-            showFloat('+'+gain+' 修为', '#f0d6a8');
-        },
-        '练功': function(){
-            const gain = Math.floor(8 + Math.random() * 12 + game.cultivation * 0.05);
-            game.power += gain;
-            const quote = WUXIA_QUOTES[Math.floor(Math.random() * WUXIA_QUOTES.length)];
-            addLog(`勤练武功，功力 +${gain}。${quote}`);
-            showFloat('+'+gain+' 功力', '#d4a574');
-        },
-        '悟道': function(){
-            const cultGain = Math.floor(10 + Math.random() * 20 + game.days * 0.2);
-            const powerGain = Math.floor(5 + Math.random() * 10);
-            game.cultivation += cultGain;
-            game.power += powerGain;
-            addLog(`参悟大道，修为 +${cultGain}，功力 +${powerGain}。道可道，非常道。`);
-            showFloat('悟道有成', '#f0d6a8');
-        },
-        '游历': function(){
-            const adv = ADVENTURES[Math.floor(Math.random() * ADVENTURES.length)];
-            game.power += adv.power;
-            game.cultivation += adv.cult;
-            addLog(`${adv.text} 功力 +${adv.power}，修为 +${adv.cult}`);
-            showFloat('奇遇！', '#ffd700');
-        }
-    };
+    const result = skill.gain(g.power);
+    g.power += result.power;
+    g.cultivation += result.cult;
+    g.days++;
+    g.totalActions++;
+    skill.cd = skill.cdMax;
     
-    if(actions[type]){
-        actions[type]();
-        game.days++;
-        game.totalActions++;
-        checkRealmUp();
-        checkAchievements();
-        updateUI();
-        saveGame();
+    // 降CD
+    SKILLS.forEach(s=>{ if(s.cd>0) s.cd--; });
+
+    let logText = skill.name;
+    if(result.power>0 && result.cult>0) logText += `：功力 +${result.power}，修为 +${result.cult}`;
+    else if(result.power>0) logText += `：功力 +${result.power}`;
+    else if(result.cult>0) logText += `：修为 +${result.cult}`;
+    
+    // 奇遇特殊处理
+    if(skill.id==='adventure'){
+        const adv = ADVENTURES[Math.floor(Math.random()*ADVENTURES.length)];
+        g.power += adv.p;
+        g.cultivation += adv.c;
+        logText = `🌄 ${adv.text} 功力 +${adv.p}，修为 +${adv.c}`;
+    }
+    
+    log(logText);
+    if(result.power>0) float('+' + result.power + ' 功力', '#d4a574');
+    if(result.cult>0) float('+' + result.cult + ' 修为', '#f0d6a8');
+    
+    checkRealm();
+    checkAch();
+    updateUI();
+    save();
+}
+
+function checkRealm(){
+    const nr = getRealmIdx();
+    if(nr > g.realm){
+        g.realm = nr;
+        const r = REALMS[nr];
+        log(`✨ 境界突破！踏入「${r.name}」之境！`, 'hl');
+        showModal('✨ 境界突破', `<p>历经${g.days}日苦修，你终于踏入</p><p style="font-size:20px;font-weight:700;margin:12px 0;color:${r.color}">「${r.name}」</p><p style="color:#a08a70">武学之道，永无止境...</p>`);
+        const bonus = Math.floor(g.power * 0.08) + 50;
+        g.power += bonus;
+        log(`🎉 突破奖励：功力 +${bonus}`, 'hl');
     }
 }
 
-// ======== 成就系统 ========
-const ACHIEVEMENTS = [
-    { id:'first_step', name:'第一步', desc:'完成第一次修炼', check:()=>game.totalActions>=1 },
-    { id:'persistent', name:'持之以恒', desc:'修炼10天', check:()=>game.days>=10 },
-    { id:'century', name:'百日筑基', desc:'修炼100天', check:()=>game.days>=100 },
-    { id:'warrior', name:'小有所成', desc:'功力达到1000', check:()=>game.power>=1000 },
-    { id:'master', name:'一代宗师', desc:'功力达到10000', check:()=>game.power>=10000 },
-    { id:'legend', name:'武林传说', desc:'功力达到100000', check:()=>game.power>=100000 },
-    { id:'realm2', name:'崭露头角', desc:'达到「小有名气」境界', check:()=>game.realm>=2 },
-    { id:'realm5', name:'宗师风范', desc:'达到「一代宗师」境界', check:()=>game.realm>=5 },
-    { id:'100actions', name:'百炼成钢', desc:'完成100次行动', check:()=>game.totalActions>=100 },
-    { id:'500actions', name:'千锤百炼', desc:'完成500次行动', check:()=>game.totalActions>=500 },
-];
-
-function checkAchievements(){
-    ACHIEVEMENTS.forEach(a => {
-        if(!game.achievements.includes(a.id) && a.check()){
-            game.achievements.push(a.id);
-            addLog(`🏆 达成成就：「${a.name}」- ${a.desc}`, 'special');
-            showModal('🏆 成就达成！', `「${a.name}」\n${a.desc}`);
-            // 成就奖励
-            game.power += 100;
-            addLog(`成就奖励：功力 +100`);
+function checkAch(){
+    ACHIEVEMENTS.forEach(a=>{
+        if(!g.achievements.includes(a.id) && a.check(g)){
+            g.achievements.push(a.id);
+            log(`🏆 成就达成：「${a.name}」`, 'ach');
+            g.power += a.reward;
+            log(`🎁 成就奖励：功力 +${a.reward}`, 'ach');
+            showModal('🏆 成就达成', `<p style="font-size:22px;font-weight:700">「${a.name}」</p><p style="color:#a08a70;margin:8px 0">${a.desc}</p><p style="color:#ffd700">奖励功力 +${a.reward}</p>`);
         }
     });
 }
 
 // ======== UI ========
 function updateUI(){
+    const r = REALMS[getRealmIdx()];
+    // 人物
+    document.getElementById('portraitFigure').textContent = r.emoji;
+    document.getElementById('portraitName').textContent = r.title;
+    document.getElementById('portraitTitle').textContent = r.icon+' '+r.name;
+    document.getElementById('portraitFigure').style.color = r.color;
     // 境界
-    const r = REALMS[game.realm];
-    document.getElementById('realmName').innerHTML = 
-        `${r.name} <span class="level">Lv.${game.realm+1}</span>
-        <span class="progress-text" id="progressText">功力 ${game.power} / ${game.realm < REALMS.length-1 ? REALMS[game.realm+1].minPower : '已至化境'}</span>`;
-    
-    // 进度条
-    if(game.realm < REALMS.length-1){
-        const currentMin = REALMS[game.realm].minPower;
-        const nextMin = REALMS[game.realm+1].minPower;
-        const progress = ((game.power - currentMin) / (nextMin - currentMin)) * 100;
+    const badge = document.getElementById('realmBadge');
+    badge.textContent = r.icon+' Lv.'+(g.realm+1)+' '+r.name;
+    badge.style.borderColor = r.color+'40';
+    badge.style.color = r.color;
+    // 进度
+    const next = REALMS[g.realm+1];
+    if(next){
+        const progress = ((g.power - r.minPower) / (next.minPower - r.minPower)) * 100;
         document.getElementById('progressFill').style.width = Math.min(100, progress) + '%';
+        document.getElementById('progressCurrent').textContent = `功力 ${fmt(g.power)}`;
+        document.getElementById('progressNext').textContent = `下一境: ${fmt(next.minPower)}`;
     }else{
         document.getElementById('progressFill').style.width = '100%';
+        document.getElementById('progressCurrent').textContent = `功力 ${fmt(g.power)}`;
+        document.getElementById('progressNext').textContent = '已至化境';
     }
-    
     // 属性
-    document.getElementById('statPower').textContent = formatNum(game.power);
-    document.getElementById('statCultivation').textContent = formatNum(game.cultivation);
-    document.getElementById('statDays').textContent = `第${game.days}日`;
-    
-    // 境界框颜色
-    document.getElementById('realmBox').style.borderColor = r.color + '40';
+    document.getElementById('sPower').textContent = fmt(g.power);
+    document.getElementById('sCult').textContent = fmt(g.cultivation);
+    document.getElementById('sDays').textContent = g.days;
+    document.getElementById('sAch').textContent = g.achievements.length+'/'+ACHIEVEMENTS.length;
+    // 武功
+    renderSkills();
 }
 
-function formatNum(n){
-    if(n >= 1000000) return (n/10000).toFixed(1)+'万';
-    if(n >= 10000) return (n/10000).toFixed(2)+'万';
+function renderSkills(){
+    const realm = getRealmIdx();
+    const html = SKILLS.map(s=>{
+        const locked = s.unlock > realm;
+        const cdText = s.cd > 0 ? `<span style="color:#5a4a3a">冷却 ${s.cd} 回合</span>` : '';
+        return `<div class="skill-card ${locked?'locked':''}" onclick="doAction('${s.id}')">
+            <div class="sk-icon">${s.icon}</div>
+            <div class="sk-name">${s.name}</div>
+            <div class="sk-desc">${locked ? '🔒 需要「'+REALMS[s.unlock].name+'」' : s.desc}</div>
+            <div class="sk-gain">${cdText}</div>
+        </div>`;
+    }).join('');
+    document.getElementById('skillsList').innerHTML = html;
+}
+
+function fmt(n){
+    if(n>=10000000) return (n/100000000).toFixed(1)+'亿';
+    if(n>=1000000) return (n/10000).toFixed(1)+'万';
+    if(n>=10000) return (n/10000).toFixed(2)+'万';
     return Math.floor(n);
 }
 
-function addLog(text, cls=''){
-    const time = `第${game.days}日`;
-    const entry = `<div class="log-entry"><span class="time">[${time}]</span><span class="${cls}">${text}</span></div>`;
-    game.log.push(`[${time}] ${text}`);
+function log(text, cls=''){
+    const t = '第'+g.days+'日';
+    g.logs.push('['+t+'] '+text);
+    if(g.logs.length>100) g.logs = g.logs.slice(-100);
     const box = document.getElementById('logBox');
-    box.innerHTML += entry;
+    box.innerHTML += `<div class="le"><span class="tm">[${t}]</span><span class="${cls||''}">${text}</span></div>`;
     box.scrollTop = box.scrollHeight;
 }
 
-function showFloat(text, color){
+function float(text, color){
     const el = document.createElement('div');
-    el.className = 'float-up';
-    el.textContent = text;
-    el.style.color = color;
-    el.style.left = (30 + Math.random() * 40) + '%';
-    el.style.top = '40%';
+    el.className = 'floating';
+    el.textContent = text; el.style.color = color;
+    el.style.left = (20+Math.random()*60)+'%';
+    el.style.top = (30+Math.random()*30)+'%';
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), 1500);
+    setTimeout(()=>el.remove(), 1800);
 }
 
-function showModal(title, text){
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay fade-in';
-    overlay.innerHTML = `
-        <div class="modal">
-            <h2>${title}</h2>
-            <p>${text}</p>
-            <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">继续修炼</button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
+function showModal(title, html){
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    ov.innerHTML = `<div class="modal"><div class="m-icon">${title.includes('境界')?'⚔️':title.includes('成就')?'🏆':'📜'}</div><h2>${title}</h2>${html}<br><button class="modal-btn" onclick="this.closest('.modal-overlay').remove()">继续修炼</button></div>`;
+    document.body.appendChild(ov);
 }
 
-// ======== 后台挂机修炼 ========
-function checkOfflineProgress(){
+// ======== 离线 ========
+function checkOffline(){
     const now = Date.now();
-    const elapsed = now - (game.lastSave || now);
-    if(elapsed > 60000 && game.days > 1){ // 超过1分钟离线
-        const offlineDays = Math.floor(elapsed / 30000); // 每30秒算一天
-        if(offlineDays > 0){
-            game.days += offlineDays;
-            const powerGain = Math.floor(offlineDays * (1 + game.cultivation * 0.01));
-            const cultGain = Math.floor(offlineDays * 2);
-            game.power += powerGain;
-            game.cultivation += cultGain;
-            addLog(`⏰ 离线修炼归来！功力 +${powerGain}，修为 +${cultGain}（离线${offlineDays}天）`);
-            checkRealmUp();
-            checkAchievements();
+    const el = now - (g.lastSave || now);
+    if(el > 30000 && g.days > 1){
+        const od = Math.floor(el / 15000);
+        if(od > 0){
+            g.days += od;
+            const pg = Math.floor(od * (2 + g.cultivation * 0.02));
+            const cg = Math.floor(od * 3);
+            g.power += pg; g.cultivation += cg;
+            log(`⏰ 离线修炼归来！功力 +${pg}，修为 +${cg}（${od}天）`, 'hl');
+            checkRealm(); checkAch();
         }
     }
 }
 
 // ======== 初始化 ========
 function init(){
-    checkOfflineProgress();
+    checkOffline();
     updateUI();
-    // 恢复日志显示
     const box = document.getElementById('logBox');
-    box.innerHTML = game.log.slice(-20).map(l => {
-        const isSpecial = l.includes('✨') || l.includes('🏆') || l.includes('🎉');
-        const time = l.match(/\[(.+?)\]/)?.[1] || '';
-        const text = l.replace(/\[.+?\]\s*/,'');
-        return `<div class="log-entry"><span class="time">[${time}]</span><span class="${isSpecial?'special':''}">${text}</span></div>`;
+    box.innerHTML = g.logs.slice(-30).map(l=>{
+        const m = l.match(/\[(.+?)\]/);
+        const t = m?m[1]:''; const txt = l.replace(/\[.+?\]\s*/,'');
+        const cls = l.includes('✨')||l.includes('🎉')||l.includes('⏰')?'hl':l.includes('🏆')?'ach':'';
+        return `<div class="le"><span class="tm">[${t}]</span><span class="${cls}">${txt}</span></div>`;
     }).join('');
     box.scrollTop = box.scrollHeight;
-    
-    // 自动保存每30秒
-    setInterval(saveGame, 30000);
-    
-    // 回车快捷键
-    document.addEventListener('keydown', e => {
-        if(e.key === ' '){ e.preventDefault(); act('打坐'); }
-    });
-    
-    addLog('小空为你护法，开始修炼吧！');
-    saveGame();
+    setInterval(save, 15000);
+    log('小空为你护法，开始修炼吧！');
+    save();
 }
 
-// 页面可见性变化时保存
-document.addEventListener('visibilitychange', () => { if(!document.hidden) init(); });
+document.addEventListener('visibilitychange', ()=>{
+    if(!document.hidden) init();
+});
 
 init();
 </script>
