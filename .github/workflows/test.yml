@@ -1,0 +1,59 @@
+name: 自动测试
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: 检查HTML结构
+        run: |
+          if grep -q "</html>" "index.html"; then
+            echo "✅ HTML结构完整"
+          else
+            echo "❌ HTML结构不完整"
+            exit 1
+          fi
+      
+      - name: 检查关键函数是否存在
+        run: |
+            FUNCTIONS="doPractice pickSkill toggleAutoPractice checkFates doFish doExplore doRead showModal"
+            MISSING=""
+            for fn in $FUNCTIONS; do
+              if grep -q "function $fn" index.html; then
+                echo "  ✅ $fn"
+              else
+                echo "  ❌ $fn"
+                MISSING="$MISSING $fn"
+              fi
+            done
+            if [ -n "$MISSING" ]; then
+              echo "缺少函数:$MISSING"
+              exit 1
+            fi
+      
+      - name: 检查CSS关键类
+        run: |
+            CLASSES="top-bar sgrid sgrid ss act-btn act-area log-box modal-overlay"
+            for cls in $CLASSES; do
+              if grep -q "\\.$cls" index.html; then
+                echo "  ✅ .$cls"
+              else
+                echo "  ⚠️ .$cls 未找到"
+              fi
+            done
+      
+      - name: 检查localStorage使用
+        run: |
+          if grep -q "localStorage" index.html; then
+            echo "✅ 存档功能正常"
+          else
+            echo "❌ 缺少存档功能"
+            exit 1
+          fi

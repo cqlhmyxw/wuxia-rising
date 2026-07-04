@@ -227,7 +227,7 @@ function render(){
     <div class="panel" id="panel"></div>`;
     
     // 如果之前有打开的面板，恢复
-    if(currentPlace) setTimeout(()=>openPlace(currentPlace),10);
+    if(currentPlace){ const p = document.getElementById('panel'); if(p && p.innerHTML) p.classList.add('show'); }
 }
 
 // ==================== 地点面板 ====================
@@ -364,10 +364,18 @@ const PRACTICE_EVENTS = [
 
 // 手动修炼
 function doPractice(){
-    if(!selectedSkill) return;
+    if(!selectedSkill){
+        const at = document.getElementById('at');
+        if(at) at.innerHTML = '⚠️ 请先选择一门武功！<br><span style="font-size:11px;color:#8b6914;">点击上方武功卡片即可选择</span>';
+        return;
+    }
     const s = SKILLS.find(x=>x.id===selectedSkill);
     let gs = G.skills.find(x=>x.id===selectedSkill);
-    if(!s||!gs) return;
+    if(!s||!gs){
+        const at = document.getElementById('at');
+        if(at) at.textContent = '⚠️ 武功数据异常，请重新选择。';
+        return;
+    }
     if(gs.lv>=9&&gs.exp>=MAX_EXP){
         document.getElementById('at').textContent = '此功已至化境，无需再练。'; return;
     }
@@ -455,7 +463,11 @@ function toggleAutoPractice(){
         // 自动修炼收益是手动的0.8倍，无随机事件
         const s = SKILLS.find(x=>x.id===selectedSkill);
         let gs = G.skills.find(x=>x.id===selectedSkill);
-        if(!s||!gs) return;
+        if(!s||!gs){
+        const at = document.getElementById('at');
+        if(at) at.textContent = '⚠️ 武功数据异常，请重新选择。';
+        return;
+    }
         let bonus = 1;
         if(G.innateFates.some(f=>f.id==='tl')) bonus += 0.5;
         if(G.awakenedFates.includes('tdcq')) bonus += 0.2;
