@@ -234,6 +234,7 @@ function render(){
     }
     
     const fate = G.innateFate;
+    const allFates = G.innateFates || [fate];
     const rarityStars = {S:'⭐⭐⭐⭐⭐',A:'⭐⭐⭐⭐',B:'⭐⭐⭐',C:'⭐⭐',D:'⭐'};
     const rarityColors = {S:'#c0392b',A:'#d4a574',B:'#8b6914',C:'#5a7a3a',D:'#808080'};
     
@@ -242,8 +243,8 @@ function render(){
         <div class="avatar">${G.playerName[0]||'无'}</div>
         <div class="player-info">
             <div class="player-name">${G.playerName}</div>
-            <div class="player-fate" style="color:${rarityColors[fate.rarity]}">
-                ${rarityStars[fate.rarity]} ${fate.name} — ${fate.desc}
+            <div class="player-fate">
+                ${allFates.map(f => `<span style="color:${rarityColors[f.rarity]}">${rarityStars[f.rarity]}${f.name}</span>`).join(' · ')}
                 <span style="color:#a08060;margin-left:4px;font-size:10px;">
                     ${G.days}天 | 功力${fmt(G.power)}
                 </span>
@@ -311,7 +312,7 @@ function fmt(n){
     return Math.floor(n);
 }
 
-// ==================== 命格抽取 ====================
+// 抽3个先天命格
 function drawFateScreen(){
     document.getElementById('app').innerHTML = `
     <div class="fate-draw-overlay">
@@ -325,8 +326,15 @@ function drawFateScreen(){
 }
 
 function doDraw(){
-    const fate = drawInnateFate();
-    G.innateFate = fate;
+    const fates = [];
+    for(let i=0; i<3; i++){
+        fates.push(drawInnateFate());
+    }
+    // 按稀有度排序
+    const rarityOrder = {S:0, A:1, B:2, C:3, D:4};
+    fates.sort((a,b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
+    G.innateFates = fates;
+    G.innateFate = fates[0]; // 主命格是第一个（最高稀有度）
     G.hasStarted = true;
     
     const rarityColors = {S:'#c0392b',A:'#d4a574',B:'#8b6914',C:'#5a7a3a',D:'#808080'};
@@ -335,13 +343,16 @@ function doDraw(){
     
     document.getElementById('app').innerHTML = `
     <div class="fate-draw-overlay">
-        <div class="fate-card" style="border-color:${rarityColors[fate.rarity]}">
-            <div class="fate-rarity">${rarityStars[fate.rarity]}</div>
-            <div style="font-size:12px;color:${rarityColors[fate.rarity]};letter-spacing:4px;margin-bottom:8px;">${rarityNames[fate.rarity]}</div>
-            <div class="fate-name" style="color:${rarityColors[fate.rarity]}">${fate.name}</div>
-            <div class="fate-desc">${fate.desc}</div>
-            <div class="fate-extra">${fate.rarity === 'D' ? '💪 天道酬勤，后天的你必将不凡！' : '✨ 天赐良缘，好好把握！'}</div>
-            <button class="fate-btn" onclick="startGame()">踏 入 江 湖</button>
+        <div class="fate-card">
+            <div style="font-size:20px;margin-bottom:12px;letter-spacing:4px;">你 的 天 命</div>
+            ${fates.map(f => `
+                <div style="margin:8px 0;padding:8px;border:1px solid ${rarityColors[f.rarity]};border-radius:6px;">
+                    <div style="font-size:12px;color:${rarityColors[f.rarity]};">${rarityStars[f.rarity]} ${rarityNames[f.rarity]}</div>
+                    <div style="font-size:18px;font-weight:700;color:#2c1810;">${f.name}</div>
+                    <div style="font-size:12px;color:#5a3a2a;">${f.desc}</div>
+                </div>
+            `).join('')}
+            <button class="fate-btn" style="margin-top:16px;" onclick="startGame()">踏 入 江 湖</button>
         </div>
     </div>`;
     
@@ -396,7 +407,7 @@ function openPlace(place){
                 <p style="text-align:center;color:#8b6914;font-size:12px;margin-bottom:16px;">出师条件：功力达到5000 · 已觉醒命格≥3个</p>
                 <div style="text-align:center;padding:16px;">
                     <span style="font-size:14px;color:#5a3a2a;">
-                        功力: ${fmt(G.power)}/5000 | 命格: ${G.awakenedFates.length}/3
+                        功力: ${fmt(G.power)}/5000 | 命格: ${(G.awakenedFates?.length||0)+(G.innateFates?.length||1)}/6
                     </span>
                 </div>
                 ${G.power >= 5000 && G.awakenedFates.length >= 3 ? `
@@ -415,8 +426,33 @@ function openPlace(place){
     panel.innerHTML = `<span class="panel-back" onclick="closePanel()">← 返回</span>
         <div class="panel-title">${p.title}</div>${p.content}`;
     
-    // 如果是练功场，渲染武功列表
-    if(place === 'practice') renderSkills();
+    // 如果是练功场，渲染武功列表并确保按钮状态
+    if(place === 'practice'){
+        renderSkills();
+        selectedSkill = null;
+        const btn = document.getElementById('practiceBtn');
+        const text = document.getElementById('actText');
+        const anim = document.getElementById('actAnim');
+        if(btn) btn.style.display = 'none';
+        if(text) text.textContent = '点击上方武功开始修炼...';
+        if(anim) anim.textContent = '👊';
+        // 直接给武功卡片绑定点击事件
+        setTimeout(() => {
+            document.querySelectorAll('.skill-card').forEach(el => {
+                el.onclick = function(){
+                    const id = this.dataset.skillId;
+                    selectedSkill = id;
+                    const s = SKILL_DATA.find(x => x.id === id);
+                    const btn = document.getElementById('practiceBtn');
+                    const text = document.getElementById('actText');
+                    const anim = document.getElementById('actAnim');
+                    if(btn){ btn.style.display = 'inline-block'; btn.disabled = false; }
+                    if(text) text.textContent = '站到木人桩前，准备练习【'+s.name+'】...';
+                    if(anim) anim.textContent = s.type === '内功' ? '🧘' : s.type === '轻功' ? '🏃' : '👊';
+                };
+            });
+        }, 50);
+    }
 }
 
 function closePanel(){
@@ -460,7 +496,7 @@ function renderSkills(){
         const level = gs ? gs.masteryLevel : 0;
         const exp = gs ? gs.exp : 0;
         const progress = Math.min(100, (exp / MAX_EXP) * 100);
-        return `<div class="skill-card" onclick="selectSkill('${s.id}')">
+        return `<div class="skill-card" data-skill-id="${s.id}" onclick="selectSkill('${s.id}')">
             <div class="sk-name">${s.name}</div>
             <div class="sk-type">${s.type} · 威力${s.power} · 速度${s.speed}</div>
             <div class="sk-lv">${MASTERY[level]} (${Math.floor(exp)}/${MAX_EXP})</div>
