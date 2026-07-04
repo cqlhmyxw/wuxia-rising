@@ -4,551 +4,618 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-touch-fullscreen" content="yes">
-<style> *{ -webkit-tap-highlight-color:transparent; } </style>
-<title>武侠·崛起</title>
+<title>武侠·崛起 — 小山谷</title>
 <style>
 *{ margin:0; padding:0; box-sizing:border-box; }
 body{
-    background:#0d0806; color:#d4c5a9;
+    background:#f5e6c8; color:#2c1810;
     font-family:'STKaiti','KaiTi','Noto Serif SC',serif;
     min-height:100vh; overflow-x:hidden;
-    background-image:
-        radial-gradient(ellipse at 50% 0%, rgba(100,50,20,0.15) 0%, transparent 60%),
-        radial-gradient(ellipse at 20% 80%, rgba(50,30,15,0.1) 0%, transparent 50%);
-    display:flex; justify-content:center;
+    background-image:radial-gradient(ellipse at 50% 100%, #e8d5b0 0%, #f5e6c8 60%);
 }
-#app{ width:100%; max-width:420px; min-height:100vh; padding:0 14px 120px; position:relative; }
+#app{ max-width:480px; margin:0 auto; min-height:100vh; position:relative; }
 
-/* === 水墨动画背景 === */
-#bgCanvas{
-    position:fixed; top:0; left:0; width:100%; height:100%;
-    z-index:0; pointer-events:none; opacity:0.3;
-}
-
-/* === 顶部 === */
+/* ===== 顶部角色栏 ===== */
 .top-bar{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:16px 0 8px; position:relative; z-index:2;
+    background:linear-gradient(180deg, #2c1810 0%, #3d2415 100%);
+    padding:12px 16px; display:flex; align-items:center; gap:12px;
+    position:sticky; top:0; z-index:10;
 }
-.top-bar .title{
-    font-size:20px; font-weight:700; letter-spacing:4px;
-    background:linear-gradient(135deg, #f0d6a8, #d4a574);
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-}
-.top-bar .version{
-    font-size:10px; color:#5a4a3a; background:rgba(212,197,169,0.05);
-    padding:2px 8px; border-radius:4px; border:1px solid rgba(212,197,169,0.08);
-}
-
-/* === 人物立绘区 === */
-.portrait-area{
-    position:relative; z-index:2; text-align:center;
-    margin:0 -14px; padding:20px 0;
-    background:linear-gradient(180deg, rgba(212,165,116,0.03) 0%, transparent 100%);
-    border-top:1px solid rgba(212,197,169,0.05);
-    border-bottom:1px solid rgba(212,197,169,0.05);
-    overflow:hidden;
-}
-.portrait-container{
-    position:relative; width:140px; height:160px; margin:0 auto;
-}
-.portrait-figure{
-    width:100%; height:100%; border-radius:50%;
+.avatar{
+    width:48px; height:48px; border-radius:50%;
+    background:linear-gradient(135deg, #8b2500, #c0392b);
     display:flex; align-items:center; justify-content:center;
-    font-size:64px; transition:all 0.5s ease;
-    position:relative; z-index:2;
+    font-size:20px; color:#f5e6c8; font-weight:700;
+    border:2px solid #d4a574; flex-shrink:0;
 }
-.portrait-glow{
-    position:absolute; inset:-15px; border-radius:50%;
-    background:conic-gradient(from 0deg, transparent, rgba(212,165,116,0.1), transparent, rgba(212,165,116,0.1), transparent);
-    animation:glowSpin 4s linear infinite;
-    z-index:1;
-}
-@keyframes glowSpin{ 100%{ transform:rotate(360deg); } }
-.portrait-name{ font-size:18px; font-weight:700; margin-top:8px; letter-spacing:2px; }
-.portrait-title{ font-size:12px; color:#8a7a6a; margin-top:2px; letter-spacing:3px; }
+.player-info{ flex:1; min-width:0; }
+.player-name{ color:#f5e6c8; font-size:16px; font-weight:700; letter-spacing:2px; }
+.player-fate{ color:#d4a574; font-size:11px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.player-stats{ display:flex; gap:8px; margin-top:4px; }
+.player-stats span{ color:#a08060; font-size:10px; }
+.player-stats span strong{ color:#f5e6c8; font-weight:400; }
 
-/* === 境界进度 === */
-.realm-section{
-    position:relative; z-index:2; padding:16px 0; text-align:center;
+/* ===== 主场景 ===== */
+.scene{
+    padding:16px; position:relative;
+    min-height:400px;
+    background:linear-gradient(180deg, #87CEEB 0%, #B0E0E6 30%, #90EE90 50%, #228B22 100%);
+    border-bottom:3px solid #2c1810;
 }
-.realm-badge{
-    display:inline-flex; align-items:center; gap:10px;
-    padding:8px 20px; border-radius:20px; font-size:14px;
-    border:1px solid; letter-spacing:2px;
+.scene-title{
+    text-align:center; font-size:14px; color:#2c1810;
+    background:rgba(245,230,200,0.8); padding:4px 12px;
+    border-radius:4px; display:inline-block; margin:0 auto 12px;
+    width:100%;
 }
-.progress-container{ padding:16px 0 8px; }
-.progress-label{
-    display:flex; justify-content:space-between; font-size:11px;
-    color:#6a5a4a; margin-bottom:6px;
+/* 场景网格 */
+.scene-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap:8px;
 }
-.progress-track{
-    width:100%; height:8px; background:rgba(212,197,169,0.06);
-    border-radius:4px; overflow:hidden;
+.scene-spot{
+    background:rgba(245,230,200,0.85);
+    border:2px solid #8b4513; border-radius:8px;
+    padding:12px 8px; text-align:center; cursor:pointer;
+    transition:all 0.2s; min-height:80px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
 }
-.progress-fill{
-    height:100%; border-radius:4px;
-    background:linear-gradient(90deg, #8a6a4a, #d4a574, #f0d6a8);
-    transition:width 0.5s ease; width:0%;
-    box-shadow:0 0 10px rgba(212,165,116,0.3);
-}
+.scene-spot:active{ transform:scale(0.95); background:rgba(245,230,200,1); }
+.scene-spot .icon{ font-size:28px; margin-bottom:4px; }
+.scene-spot .name{ font-size:12px; color:#2c1810; font-weight:600; }
+.scene-spot .hint{ font-size:9px; color:#8b6914; margin-top:2px; }
+.spot-1{ grid-column:2; grid-row:1; } /* 小屋 */
+.spot-2{ grid-column:1; grid-row:2; } /* 练功场 */
+.spot-3{ grid-column:3; grid-row:2; } /* 钓鱼台 */
+.spot-4{ grid-column:2; grid-row:3; } /* 后山 */
+.spot-5{ grid-column:1; grid-row:1; } /* 藏书阁 */
+.spot-6{ grid-column:3; grid-row:1; } /* 山门 */
 
-/* === 属性面板 === */
-.stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; position:relative; z-index:2; margin:16px 0; }
-.stat-item{
-    background:rgba(212,197,169,0.02); border:1px solid rgba(212,197,169,0.06);
-    border-radius:10px; padding:10px 4px; text-align:center;
+/* ===== 内容面板 ===== */
+.panel{
+    background:#fff8ef; border:1px solid #d4c5a9;
+    border-radius:8px; margin:12px 16px; padding:16px;
+    display:none; position:relative;
 }
-.stat-item .s-icon{ font-size:16px; }
-.stat-item .s-val{ font-size:16px; font-weight:700; margin-top:2px; }
-.stat-item .s-lbl{ font-size:9px; color:#6a5a4a; margin-top:2px; }
+.panel.active{ display:block; }
+.panel-title{
+    font-size:16px; font-weight:700; text-align:center;
+    padding-bottom:8px; border-bottom:1px solid #d4c5a9; margin-bottom:12px;
+    color:#2c1810;
+}
+.panel-back{
+    position:absolute; top:8px; left:8px; cursor:pointer;
+    color:#8b2500; font-size:12px;
+}
+.panel-back:hover{ text-decoration:underline; }
 
-/* === 武功 === */
-.section-title{
-    font-size:13px; color:#8a7a6a; letter-spacing:3px;
-    margin:16px 0 8px; position:relative; z-index:2;
-}
-.section-title::after{
-    content:''; display:block; width:40px; height:1px;
-    background:rgba(212,197,169,0.15); margin-top:4px;
-}
-.skills{
-    display:grid; grid-template-columns:1fr 1fr; gap:8px; position:relative; z-index:2;
-}
+/* ===== 武功列表 ===== */
+.skill-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 .skill-card{
-    background:rgba(212,197,169,0.02); border:1px solid rgba(212,197,169,0.08);
-    border-radius:10px; padding:12px; cursor:pointer; transition:all 0.2s;
+    background:#f5e6c8; border:1px solid #d4c5a9; border-radius:6px;
+    padding:10px; cursor:pointer; transition:all 0.2s;
 }
-.skill-card:active{ transform:scale(0.96); background:rgba(212,197,169,0.06); }
-.skill-card .sk-icon{ font-size:24px; margin-bottom:6px; }
-.skill-card .sk-name{ font-size:13px; font-weight:600; letter-spacing:1px; }
-.skill-card .sk-desc{ font-size:10px; color:#6a5a4a; margin-top:4px; }
-.skill-card .sk-gain{ font-size:10px; color:#d4a574; margin-top:4px; }
-.skill-card .sk-cd{ font-size:9px; color:#5a4a3a; margin-top:2px; }
-.skill-card.locked{ opacity:0.4; }
-
-/* === 日志 === */
-.log-section{ position:relative; z-index:2; margin-top:16px; }
-.log-box{
-    background:rgba(0,0,0,0.15); border-radius:10px;
-    padding:10px; height:150px; overflow-y:auto; font-size:11px; line-height:1.8;
+.skill-card:active{ transform:scale(0.97); background:#efe0bc; }
+.skill-card .sk-name{ font-size:13px; font-weight:600; }
+.skill-card .sk-type{ font-size:10px; color:#8b6914; }
+.skill-card .sk-lv{ font-size:11px; color:#2c1810; margin-top:4px; }
+.skill-card .sk-bar{
+    width:100%; height:4px; background:#d4c5a9; border-radius:2px; margin-top:4px; overflow:hidden;
 }
-.log-box::-webkit-scrollbar{ width:2px; }
-.log-box::-webkit-scrollbar-thumb{ background:rgba(212,197,169,0.15); border-radius:2px; }
-.le{ border-bottom:1px solid rgba(212,197,169,0.03); padding:2px 0; }
-.le .tm{ color:#4a3a2a; }
-.le .hl{ color:#f0d6a8; }
-.le .ach{ color:#ffd700; }
-
-/* === 浮动文字 === */
-@keyframes floatUp{
-    0%{ opacity:1; transform:translateY(0) scale(1); }
-    100%{ opacity:0; transform:translateY(-80px) scale(1.3); }
-}
-.floating{
-    position:fixed; pointer-events:none; z-index:999;
-    font-size:20px; font-weight:700; letter-spacing:2px;
-    animation:floatUp 1.8s ease-out forwards;
+.skill-card .sk-fill{
+    height:100%; background:#8b2500; border-radius:2px; transition:width 0.3s;
 }
 
-/* === 弹窗 === */
-.modal-overlay{
-    position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:100;
+/* ===== 练功/打坐动画 ===== */
+.practice-area{
+    text-align:center; padding:20px 0;
+}
+.practice-anim{
+    width:80px; height:80px; margin:0 auto 16px;
+    background:#2c1810; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
-    animation:fadeIn 0.3s ease; backdrop-filter:blur(4px);
+    font-size:36px; animation:pulse 2s ease-in-out infinite;
 }
-@keyframes fadeIn{ from{ opacity:0; } to{ opacity:1; } }
-.modal{
-    background:#18120e; border:1px solid rgba(212,165,116,0.25);
-    border-radius:16px; padding:28px 20px; max-width:320px; width:90%;
-    text-align:center; animation:modalIn 0.3s ease;
-}
-@keyframes modalIn{ from{ transform:scale(0.95); opacity:0; } to{ transform:scale(1); opacity:1; } }
-.modal .m-icon{ font-size:48px; margin-bottom:12px; }
-.modal h2{ font-size:18px; margin-bottom:8px; letter-spacing:2px; }
-.modal p{ font-size:13px; color:#a08a70; line-height:1.7; margin-bottom:16px; }
-.modal-btn{
-    padding:10px 32px; border:1px solid rgba(212,165,116,0.3);
-    border-radius:8px; background:rgba(212,165,116,0.08);
-    color:#d4c5a9; font-family:inherit; font-size:14px; letter-spacing:2px;
+@keyframes pulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.05); } }
+.practice-text{ font-size:13px; color:#5a3a2a; line-height:1.8; margin-bottom:12px; min-height:40px; }
+.practice-btn{
+    background:#8b2500; color:#f5e6c8; border:none; border-radius:6px;
+    padding:12px 32px; font-size:16px; font-family:inherit; letter-spacing:2px;
     cursor:pointer; transition:all 0.2s;
 }
-.modal-btn:active{ background:rgba(212,165,116,0.15); transform:scale(0.96); }
+.practice-btn:active{ transform:scale(0.95); background:#6b1d00; }
+.practice-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+
+/* ===== 日志 ===== */
+.log-box{
+    background:rgba(44,24,16,0.05); border-radius:6px;
+    padding:10px; height:120px; overflow-y:auto;
+    font-size:11px; line-height:1.7; margin-top:12px;
+}
+.log-box::-webkit-scrollbar{ width:2px; }
+.log-box::-webkit-scrollbar-thumb{ background:#d4c5a9; border-radius:2px; }
+.le{ padding:2px 0; border-bottom:1px solid rgba(44,24,16,0.03); }
+.le .tm{ color:#a08060; }
+.le .hl{ color:#8b2500; }
+.le .ach{ color:#c0392b; font-weight:600; }
+
+/* ===== 命格抽签 ===== */
+.fate-draw-overlay{
+    position:fixed; inset:0; background:rgba(44,24,16,0.9); z-index:100;
+    display:flex; align-items:center; justify-content:center;
+    animation:fadeIn 0.5s ease;
+}
+@keyframes fadeIn{ from{ opacity:0; } to{ opacity:1; } }
+.fate-card{
+    background:linear-gradient(135deg, #f5e6c8, #efe0bc);
+    border:3px solid #8b2500; border-radius:12px;
+    padding:32px 24px; max-width:320px; width:90%; text-align:center;
+    animation:cardIn 0.6s ease;
+}
+@keyframes cardIn{ from{ transform:scale(0.5) rotate(-10deg); opacity:0; } to{ transform:scale(1) rotate(0); opacity:1; } }
+.fate-rarity{ font-size:28px; margin-bottom:8px; }
+.fate-name{ font-size:22px; font-weight:700; color:#2c1810; margin-bottom:4px; letter-spacing:4px; }
+.fate-desc{ font-size:14px; color:#5a3a2a; margin-bottom:8px; }
+.fate-extra{ font-size:11px; color:#8b6914; }
+.fate-btn{
+    margin-top:16px; background:#8b2500; color:#f5e6c8; border:none;
+    border-radius:6px; padding:10px 24px; font-size:14px; font-family:inherit;
+    cursor:pointer; letter-spacing:2px;
+}
+
+/* ===== 命格觉醒弹窗 ===== */
+.alert-overlay{
+    position:fixed; inset:0; background:rgba(44,24,16,0.7); z-index:100;
+    display:flex; align-items:center; justify-content:center;
+    animation:fadeIn 0.3s ease;
+}
+.alert-box{
+    background:#fff8ef; border:2px solid #c0392b; border-radius:10px;
+    padding:24px 20px; max-width:300px; width:90%; text-align:center;
+    animation:cardIn 0.4s ease;
+}
+.alert-box h3{ font-size:18px; color:#8b2500; margin-bottom:8px; }
+.alert-box p{ font-size:13px; color:#5a3a2a; line-height:1.6; }
+.alert-btn{
+    margin-top:12px; background:#8b2500; color:#f5e6c8; border:none;
+    border-radius:6px; padding:8px 20px; font-size:13px; font-family:inherit; cursor:pointer;
+}
 </style>
 </head>
 <body>
+<div id="app"></div>
 
-<canvas id="bgCanvas"></canvas>
-
-<div id="app">
-    <div class="top-bar">
-        <div class="title">⚔️ 武侠·崛起</div>
-        <div class="version">v1.2</div>
-    </div>
-
-    <!-- 人物立绘 -->
-    <div class="portrait-area">
-        <div class="portrait-container">
-            <div class="portrait-glow"></div>
-            <div class="portrait-figure" id="portraitFigure">🧘</div>
-        </div>
-        <div class="portrait-name" id="portraitName">无名少年</div>
-        <div class="portrait-title" id="portraitTitle">初入江湖</div>
-    </div>
-
-    <!-- 境界进度 -->
-    <div class="realm-section">
-        <div class="realm-badge" id="realmBadge" style="border-color:#8a7a6a40;color:#8a7a6a">
-            🌱 初入江湖
-        </div>
-        <div class="progress-container">
-            <div class="progress-label">
-                <span id="progressCurrent">功力 0</span>
-                <span id="progressNext">下一境: 100</span>
-            </div>
-            <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-        </div>
-    </div>
-
-    <!-- 属性 -->
-    <div class="stats">
-        <div class="stat-item"><div class="s-icon">⚡</div><div class="s-val" id="sPower">0</div><div class="s-lbl">功力</div></div>
-        <div class="stat-item"><div class="s-icon">🧘</div><div class="s-val" id="sCult">0</div><div class="s-lbl">修为</div></div>
-        <div class="stat-item"><div class="s-icon">📅</div><div class="s-val" id="sDays">1</div><div class="s-lbl">天数</div></div>
-        <div class="stat-item"><div class="s-icon">🏆</div><div class="s-val" id="sAch">0</div><div class="s-lbl">成就</div></div>
-    </div>
-
-    <!-- 武功修炼 -->
-    <div class="section-title">📜 修炼功法</div>
-    <div class="skills" id="skillsList"></div>
-
-    <!-- 日志 -->
-    <div class="log-section">
-        <div class="section-title">📖 修炼日志</div>
-        <div class="log-box" id="logBox"><div class="le">初入江湖，一切从零开始...</div></div>
-    </div>
-</div>
-
+<script src="fate.js"></script>
 <script>
-// ======== 水墨背景 ========
-const canvas = document.getElementById('bgCanvas');
-const ctx = canvas.getContext('2d');
-function resizeCanvas(){
-    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-}
-resizeCanvas(); window.addEventListener('resize', resizeCanvas);
-
-class Particle{
-    constructor(){
-        this.reset();
-    }
-    reset(){
-        this.x = Math.random() * canvas.width;
-        this.y = -10;
-        this.size = Math.random() * 3 + 1;
-        this.speed = Math.random() * 0.3 + 0.1;
-        this.alpha = Math.random() * 0.3 + 0.1;
-        this.waver = Math.random() * Math.PI * 2;
-    }
-    update(){
-        this.y += this.speed;
-        this.waver += 0.01;
-        this.x += Math.sin(this.waver) * 0.3;
-        if(this.y > canvas.height + 10) this.reset();
-    }
-    draw(){
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(180,150,120,${this.alpha})`;
-        ctx.fill();
-    }
-}
-const particles = Array.from({length:30}, ()=>new Particle());
-function animateBg(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    particles.forEach(p=>{ p.update(); p.draw(); });
-    requestAnimationFrame(animateBg);
-}
-animateBg();
-
-// ======== 游戏数据 ========
-const REALMS = [
-    { name:'初入江湖', minPower:0, icon:'🌱', emoji:'🧘', title:'无名少年', color:'#8a7a6a' },
-    { name:'后起之秀', minPower:100, icon:'🌿', emoji:'🏃', title:'习武少年', color:'#a08a70' },
-    { name:'小有名气', minPower:500, icon:'🌳', emoji:'⚔️', title:'武林新丁', color:'#c4a882' },
-    { name:'武林新秀', minPower:2000, icon:'🔥', emoji:'🤺', title:'少年英侠', color:'#d4a574' },
-    { name:'江湖高手', minPower:8000, icon:'⚡', emoji:'🦅', title:'江湖豪侠', color:'#e8c088' },
-    { name:'一代宗师', minPower:25000, icon:'💫', emoji:'🐉', title:'一代宗师', color:'#f0d6a8' },
-    { name:'武林泰斗', minPower:60000, icon:'🌌', emoji:'🐲', title:'武林泰斗', color:'#ffd700' },
-    { name:'绝世高手', minPower:150000, icon:'☀️', emoji:'🗡️', title:'绝世剑仙', color:'#ffaa00' },
-    { name:'陆地神仙', minPower:500000, icon:'👁️', emoji:'🧙', title:'陆地神仙', color:'#ff8800' },
-    { name:'破碎虚空', minPower:1500000, icon:'🌀', emoji:'🌪️', title:'破碎虚空', color:'#ff4400' },
-];
-
-const SKILLS = [
-    { id:'meditate', name:'吐纳心法', icon:'🧘', desc:'静心凝神，调理内息', unlock:0, gain:(g)=>({power:0,cult:5+Math.floor(Math.random()*10+g*0.1)}), cd:0, cdMax:0 },
-    { id:'practice', name:'基础拳法', icon:'👊', desc:'扎马步，练拳法', unlock:0, gain:(g)=>({power:8+Math.floor(Math.random()*12+g*0.05),cult:2}), cd:0, cdMax:0 },
-    { id:'enlighten', name:'参悟大道', icon:'📖', desc:'研读道经，以求顿悟', unlock:1, gain:(g)=>({power:5+Math.floor(Math.random()*8),cult:10+Math.floor(Math.random()*20+g*0.2)}), cd:0, cdMax:3 },
-    { id:'adventure', name:'云游四海', icon:'🌄', desc:'走遍山川，寻求奇遇', unlock:2, gain:(g)=>({power:20+Math.floor(Math.random()*30),cult:8+Math.floor(Math.random()*15)}), cd:0, cdMax:5 },
-    { id:'sword', name:'独孤九剑', icon:'⚔️', desc:'剑法精髓，破尽天下武学', unlock:3, gain:(g)=>({power:50+Math.floor(Math.random()*60+g*0.1),cult:15}), cd:0, cdMax:8 },
-    { id:'inner', name:'易筋经', icon:'🌀', desc:'少林无上内功，脱胎换骨', unlock:5, gain:(g)=>({power:30+Math.floor(Math.random()*40),cult:40+Math.floor(Math.random()*50+g*0.3)}), cd:0, cdMax:10 },
-];
-
-const ADVENTURES = [
-    { text:'在瀑布下悟道，修为大进！', p:0, c:30 },
-    { text:'击败山贼，为民除害！', p:25, c:5 },
-    { text:'得高人指点，功力大增！', p:45, c:15 },
-    { text:'偶遇灵药，服之功力倍增！', p:55, c:10 },
-    { text:'在山洞中发现失传秘籍！', p:65, c:20 },
-    { text:'救助一位老者，获赠内功心法！', p:40, c:28 },
-    { text:'与高手切磋，领悟武学真谛！', p:50, c:18 },
-    { text:'在绝境中突破自我！', p:60, c:22 },
-    { text:'于悬崖边悟得轻功要诀！', p:35, c:35 },
-    { text:'夜观星象，顿悟天地大道！', p:20, c:50 },
-];
-
-const ACHIEVEMENTS = [
-    { id:'a1', name:'初出茅庐', desc:'第一次修炼', check:g=>g.totalActions>=1, reward:50 },
-    { id:'a2', name:'持之以恒', desc:'修炼10天', check:g=>g.days>=10, reward:100 },
-    { id:'a3', name:'百日筑基', desc:'修炼100天', check:g=>g.days>=100, reward:500 },
-    { id:'a4', name:'小有所成', desc:'功力达到1000', check:g=>g.power>=1000, reward:200 },
-    { id:'a5', name:'一代宗师', desc:'功力达到10000', check:g=>g.power>=10000, reward:1000 },
-    { id:'a6', name:'武林传说', desc:'功力达到100000', check:g=>g.power>=100000, reward:5000 },
-    { id:'a7', name:'崭露头角', desc:'达到小有名气境界', check:g=>g.realm>=2, reward:300 },
-    { id:'a8', name:'宗师风范', desc:'达到一代宗师境界', check:g=>g.realm>=5, reward:2000 },
-    { id:'a9', name:'百炼成钢', desc:'完成100次行动', check:g=>g.totalActions>=100, reward:500 },
-    { id:'a10', name:'千锤百炼', desc:'完成500次行动', check:g=>g.totalActions>=500, reward:2000 },
-    { id:'a11', name:'天选之人', desc:'完成1000次行动', check:g=>g.totalActions>=1000, reward:5000 },
-    { id:'a12', name:'以武入道', desc:'达到绝世高手境界', check:g=>g.realm>=7, reward:10000 },
-];
-
-// ======== 游戏状态 ========
-let g = loadGame();
-let floatingId = 0;
+// ==================== 游戏核心 ====================
+let G = loadGame();
 
 function defaultGame(){
     return {
-        power:0, cultivation:0, days:1,
-        realm:0, totalActions:0,
-        achievements:[], logs:['初入江湖，一切从零开始...'],
-        lastSave:Date.now()
+        playerName: '无名',
+        innateFate: null,
+        awakenedFates: [],
+        power: 0, cultivation: 0,
+        skills: [],
+        days: 1,
+        totalActions: 0,
+        actionLog: [],
+        skillDays: [],
+        logs: ['你来到了这个小山谷，一切从零开始...'],
+        hasStarted: false,
+        createdAt: Date.now(),
+        lastSave: Date.now()
     };
 }
 
 function loadGame(){
     try{
-        const s = localStorage.getItem('wuxia2');
+        const s = localStorage.getItem('wuxiaValley');
         if(s) return JSON.parse(s);
     }catch(e){}
     return defaultGame();
 }
 
 function save(){
-    g.lastSave = Date.now();
-    try{ localStorage.setItem('wuxia2', JSON.stringify(g)); }catch(e){}
+    G.lastSave = Date.now();
+    try{ localStorage.setItem('wuxiaValley', JSON.stringify(G)); }catch(e){}
 }
 
-// ======== 核心 ========
-function getRealmIdx(){
-    for(let i=REALMS.length-1;i>=0;i--) if(g.power>=REALMS[i].minPower) return i;
-    return 0;
-}
-
-function doAction(skillId){
-    const skill = SKILLS.find(s=>s.id===skillId);
-    if(!skill) return;
-    const realm = getRealmIdx();
-    if(skill.unlock > realm){ log(`🔒 ${skill.name} 需要达到「${REALMS[skill.unlock].name}」境界`); return; }
-    if(skill.cd > 0){ log(`⏳ ${skill.name} 还需冷却 ${skill.cd} 回合`); return; }
-
-    const result = skill.gain(g.power);
-    g.power += result.power;
-    g.cultivation += result.cult;
-    g.days++;
-    g.totalActions++;
-    skill.cd = skill.cdMax;
+// ==================== 场景渲染 ====================
+function render(){
+    const app = document.getElementById('app');
     
-    // 降CD
-    SKILLS.forEach(s=>{ if(s.cd>0) s.cd--; });
-
-    let logText = skill.name;
-    if(result.power>0 && result.cult>0) logText += `：功力 +${result.power}，修为 +${result.cult}`;
-    else if(result.power>0) logText += `：功力 +${result.power}`;
-    else if(result.cult>0) logText += `：修为 +${result.cult}`;
-    
-    // 奇遇特殊处理
-    if(skill.id==='adventure'){
-        const adv = ADVENTURES[Math.floor(Math.random()*ADVENTURES.length)];
-        g.power += adv.p;
-        g.cultivation += adv.c;
-        logText = `🌄 ${adv.text} 功力 +${adv.p}，修为 +${adv.c}`;
+    if(!G.innateFate){
+        // 还没抽命格 → 先抽
+        drawFateScreen();
+        return;
     }
     
-    log(logText);
-    if(result.power>0) float('+' + result.power + ' 功力', '#d4a574');
-    if(result.cult>0) float('+' + result.cult + ' 修为', '#f0d6a8');
+    const fate = G.innateFate;
+    const rarityStars = {S:'⭐⭐⭐⭐⭐',A:'⭐⭐⭐⭐',B:'⭐⭐⭐',C:'⭐⭐',D:'⭐'};
+    const rarityColors = {S:'#c0392b',A:'#d4a574',B:'#8b6914',C:'#5a7a3a',D:'#808080'};
     
-    checkRealm();
-    checkAch();
-    updateUI();
-    save();
+    app.innerHTML = `
+    <div class="top-bar">
+        <div class="avatar">${G.playerName[0]||'无'}</div>
+        <div class="player-info">
+            <div class="player-name">${G.playerName}</div>
+            <div class="player-fate" style="color:${rarityColors[fate.rarity]}">
+                ${rarityStars[fate.rarity]} ${fate.name} — ${fate.desc}
+                <span style="color:#a08060;margin-left:4px;font-size:10px;">
+                    ${G.days}天 | 功力${fmt(G.power)}
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="scene">
+        <div class="scene-title">🏔️ 小山谷 · ${getSeason()}</div>
+        <div class="scene-grid">
+            <div class="scene-spot spot-1" onclick="openPlace('home')">
+                <span class="icon">🏠</span>
+                <span class="name">小 屋</span>
+                <span class="hint">打坐·休息</span>
+            </div>
+            <div class="scene-spot spot-2" onclick="openPlace('practice')">
+                <span class="icon">🪵</span>
+                <span class="name">练功场</span>
+                <span class="hint">练武·磨砺</span>
+            </div>
+            <div class="scene-spot spot-3" onclick="openPlace('fish')">
+                <span class="icon">🎣</span>
+                <span class="name">钓鱼台</span>
+                <span class="hint">垂钓·休憩</span>
+            </div>
+            <div class="scene-spot spot-4" onclick="openPlace('mountain')">
+                <span class="icon">🌲</span>
+                <span class="name">后 山</span>
+                <span class="hint">探索·采集</span>
+            </div>
+            <div class="scene-spot spot-5" onclick="openPlace('library')">
+                <span class="icon">📚</span>
+                <span class="name">藏书阁</span>
+                <span class="hint">读书·悟道</span>
+            </div>
+            <div class="scene-spot spot-6" onclick="openPlace('gate')">
+                <span class="icon">🚪</span>
+                <span class="name">山 门</span>
+                <span class="hint">出师·闯江湖</span>
+            </div>
+        </div>
+    </div>
+    <div class="log-box" id="logBox">
+        ${G.logs.slice(-15).map(l => {
+            const m = l.match(/\[(.+?)\]/);
+            const t = m?m[1]:'';
+            const txt = l.replace(/\[.+?\]\s*/,'');
+            const cls = l.includes('✨')||l.includes('🎉')||l.includes('🏆')?'hl':l.includes('觉醒')?'ach':'';
+            return `<div class="le"><span class="tm">[${t}]</span><span class="${cls}">${txt}</span></div>`;
+        }).join('')}
+    </div>
+    <div id="panel"></div>
+    `;
+    
+    // 检测后天命格
+    checkFates();
 }
 
-function checkRealm(){
-    const nr = getRealmIdx();
-    if(nr > g.realm){
-        g.realm = nr;
-        const r = REALMS[nr];
-        log(`✨ 境界突破！踏入「${r.name}」之境！`, 'hl');
-        showModal('✨ 境界突破', `<p>历经${g.days}日苦修，你终于踏入</p><p style="font-size:20px;font-weight:700;margin:12px 0;color:${r.color}">「${r.name}」</p><p style="color:#a08a70">武学之道，永无止境...</p>`);
-        const bonus = Math.floor(g.power * 0.08) + 50;
-        g.power += bonus;
-        log(`🎉 突破奖励：功力 +${bonus}`, 'hl');
-    }
-}
-
-function checkAch(){
-    ACHIEVEMENTS.forEach(a=>{
-        if(!g.achievements.includes(a.id) && a.check(g)){
-            g.achievements.push(a.id);
-            log(`🏆 成就达成：「${a.name}」`, 'ach');
-            g.power += a.reward;
-            log(`🎁 成就奖励：功力 +${a.reward}`, 'ach');
-            showModal('🏆 成就达成', `<p style="font-size:22px;font-weight:700">「${a.name}」</p><p style="color:#a08a70;margin:8px 0">${a.desc}</p><p style="color:#ffd700">奖励功力 +${a.reward}</p>`);
-        }
-    });
-}
-
-// ======== UI ========
-function updateUI(){
-    const r = REALMS[getRealmIdx()];
-    // 人物
-    document.getElementById('portraitFigure').textContent = r.emoji;
-    document.getElementById('portraitName').textContent = r.title;
-    document.getElementById('portraitTitle').textContent = r.icon+' '+r.name;
-    document.getElementById('portraitFigure').style.color = r.color;
-    // 境界
-    const badge = document.getElementById('realmBadge');
-    badge.textContent = r.icon+' Lv.'+(g.realm+1)+' '+r.name;
-    badge.style.borderColor = r.color+'40';
-    badge.style.color = r.color;
-    // 进度
-    const next = REALMS[g.realm+1];
-    if(next){
-        const progress = ((g.power - r.minPower) / (next.minPower - r.minPower)) * 100;
-        document.getElementById('progressFill').style.width = Math.min(100, progress) + '%';
-        document.getElementById('progressCurrent').textContent = `功力 ${fmt(g.power)}`;
-        document.getElementById('progressNext').textContent = `下一境: ${fmt(next.minPower)}`;
-    }else{
-        document.getElementById('progressFill').style.width = '100%';
-        document.getElementById('progressCurrent').textContent = `功力 ${fmt(g.power)}`;
-        document.getElementById('progressNext').textContent = '已至化境';
-    }
-    // 属性
-    document.getElementById('sPower').textContent = fmt(g.power);
-    document.getElementById('sCult').textContent = fmt(g.cultivation);
-    document.getElementById('sDays').textContent = g.days;
-    document.getElementById('sAch').textContent = g.achievements.length+'/'+ACHIEVEMENTS.length;
-    // 武功
-    renderSkills();
-}
-
-function renderSkills(){
-    const realm = getRealmIdx();
-    const html = SKILLS.map(s=>{
-        const locked = s.unlock > realm;
-        const cdText = s.cd > 0 ? `<span style="color:#5a4a3a">冷却 ${s.cd} 回合</span>` : '';
-        return `<div class="skill-card ${locked?'locked':''}" onclick="doAction('${s.id}')">
-            <div class="sk-icon">${s.icon}</div>
-            <div class="sk-name">${s.name}</div>
-            <div class="sk-desc">${locked ? '🔒 需要「'+REALMS[s.unlock].name+'」' : s.desc}</div>
-            <div class="sk-gain">${cdText}</div>
-        </div>`;
-    }).join('');
-    document.getElementById('skillsList').innerHTML = html;
+function getSeason(){
+    const m = ['春','夏','秋','冬'];
+    return m[Math.floor((G.days % 360) / 90)] + '天 · 第' + G.days + '日';
 }
 
 function fmt(n){
-    if(n>=10000000) return (n/100000000).toFixed(1)+'亿';
-    if(n>=1000000) return (n/10000).toFixed(1)+'万';
-    if(n>=10000) return (n/10000).toFixed(2)+'万';
+    if(n>=10000) return (n/10000).toFixed(1)+'万';
     return Math.floor(n);
 }
 
-function log(text, cls=''){
-    const t = '第'+g.days+'日';
-    g.logs.push('['+t+'] '+text);
-    if(g.logs.length>100) g.logs = g.logs.slice(-100);
-    const box = document.getElementById('logBox');
-    box.innerHTML += `<div class="le"><span class="tm">[${t}]</span><span class="${cls||''}">${text}</span></div>`;
-    box.scrollTop = box.scrollHeight;
+// ==================== 命格抽取 ====================
+function drawFateScreen(){
+    document.getElementById('app').innerHTML = `
+    <div class="fate-draw-overlay">
+        <div class="fate-card">
+            <div style="font-size:48px;margin-bottom:12px;">🔮</div>
+            <h2 style="font-size:20px;color:#2c1810;margin-bottom:8px;letter-spacing:4px;">天 命 已 定</h2>
+            <p style="font-size:13px;color:#5a3a2a;margin-bottom:16px;">你的先天命格正在显现...</p>
+            <button class="fate-btn" onclick="doDraw()">抽 取 命 格</button>
+        </div>
+    </div>`;
 }
 
-function float(text, color){
-    const el = document.createElement('div');
-    el.className = 'floating';
-    el.textContent = text; el.style.color = color;
-    el.style.left = (20+Math.random()*60)+'%';
-    el.style.top = (30+Math.random()*30)+'%';
-    document.body.appendChild(el);
-    setTimeout(()=>el.remove(), 1800);
-}
-
-function showModal(title, html){
-    const ov = document.createElement('div');
-    ov.className = 'modal-overlay';
-    ov.innerHTML = `<div class="modal"><div class="m-icon">${title.includes('境界')?'⚔️':title.includes('成就')?'🏆':'📜'}</div><h2>${title}</h2>${html}<br><button class="modal-btn" onclick="this.closest('.modal-overlay').remove()">继续修炼</button></div>`;
-    document.body.appendChild(ov);
-}
-
-// ======== 离线 ========
-function checkOffline(){
-    const now = Date.now();
-    const el = now - (g.lastSave || now);
-    if(el > 30000 && g.days > 1){
-        const od = Math.floor(el / 15000);
-        if(od > 0){
-            g.days += od;
-            const pg = Math.floor(od * (2 + g.cultivation * 0.02));
-            const cg = Math.floor(od * 3);
-            g.power += pg; g.cultivation += cg;
-            log(`⏰ 离线修炼归来！功力 +${pg}，修为 +${cg}（${od}天）`, 'hl');
-            checkRealm(); checkAch();
-        }
-    }
-}
-
-// iOS touch激活
-document.addEventListener('touchstart', function(){}, false);
-
-// ======== 初始化 ========
-function init(){
-    checkOffline();
-    updateUI();
-    const box = document.getElementById('logBox');
-    box.innerHTML = g.logs.slice(-30).map(l=>{
-        const m = l.match(/\[(.+?)\]/);
-        const t = m?m[1]:''; const txt = l.replace(/\[.+?\]\s*/,'');
-        const cls = l.includes('✨')||l.includes('🎉')||l.includes('⏰')?'hl':l.includes('🏆')?'ach':'';
-        return `<div class="le"><span class="tm">[${t}]</span><span class="${cls}">${txt}</span></div>`;
-    }).join('');
-    box.scrollTop = box.scrollHeight;
-    setInterval(save, 15000);
-    log('小空为你护法，开始修炼吧！');
+function doDraw(){
+    const fate = drawInnateFate();
+    G.innateFate = fate;
+    G.hasStarted = true;
+    
+    const rarityColors = {S:'#c0392b',A:'#d4a574',B:'#8b6914',C:'#5a7a3a',D:'#808080'};
+    const rarityStars = {S:'⭐⭐⭐⭐⭐',A:'⭐⭐⭐⭐',B:'⭐⭐⭐',C:'⭐⭐',D:'⭐'};
+    const rarityNames = {S:'天 命',A:'绝 品',B:'上 品',C:'中 品',D:'凡 品'};
+    
+    document.getElementById('app').innerHTML = `
+    <div class="fate-draw-overlay">
+        <div class="fate-card" style="border-color:${rarityColors[fate.rarity]}">
+            <div class="fate-rarity">${rarityStars[fate.rarity]}</div>
+            <div style="font-size:12px;color:${rarityColors[fate.rarity]};letter-spacing:4px;margin-bottom:8px;">${rarityNames[fate.rarity]}</div>
+            <div class="fate-name" style="color:${rarityColors[fate.rarity]}">${fate.name}</div>
+            <div class="fate-desc">${fate.desc}</div>
+            <div class="fate-extra">${fate.rarity === 'D' ? '💪 天道酬勤，后天的你必将不凡！' : '✨ 天赐良缘，好好把握！'}</div>
+            <button class="fate-btn" onclick="startGame()">踏 入 江 湖</button>
+        </div>
+    </div>`;
+    
     save();
 }
 
-document.addEventListener('visibilitychange', ()=>{
-    if(!document.hidden) init();
-});
-
-// 等DOM加载完再初始化
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
+function startGame(){
+    G.logs.push(`✨ 你带着命格【${G.innateFate.name}】踏入了小山谷。`);
+    save();
+    render();
 }
+
+// ==================== 地点面板 ====================
+function openPlace(place){
+    const panel = document.getElementById('panel');
+    if(!panel) return;
+    
+    const places = {
+        home: {
+            title: '🏠 小屋',
+            content: `
+                <p style="text-align:center;color:#5a3a2a;font-size:13px;margin-bottom:12px;">一间简朴的小屋，是你在这个山谷中的安身之所。</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <button class="practice-btn" style="font-size:12px;padding:10px;" onclick="doAct('打坐')">🧘 打坐修行</button>
+                    <button class="practice-btn" style="font-size:12px;padding:10px;background:#5a7a3a;" onclick="doAct('休息')">😴 休息恢复</button>
+                </div>
+                <div class="practice-area">
+                    <div class="practice-anim" id="actAnim">🧘</div>
+                    <div class="practice-text" id="actText">静下心来，开始修炼...</div>
+                </div>
+            `
+        },
+        practice: {
+            title: '🪵 练功场',
+            content: `
+                <p style="text-align:center;color:#5a3a2a;font-size:13px;margin-bottom:12px;">木人桩立在场地中央，等待你的磨砺。</p>
+                <div class="skill-grid" id="skillGrid"></div>
+                <div class="practice-area">
+                    <div class="practice-anim" id="actAnim">👊</div>
+                    <div class="practice-text" id="actText">选择一门武功开始修炼...</div>
+                    <button class="practice-btn" id="practiceBtn" style="display:none;" onclick="doPractice()">开始练功</button>
+                </div>
+            `
+        },
+        fish: { title: '🎣 钓鱼台', content: `<p style="text-align:center;color:#5a3a2a;">钓鱼台正在建设中...</p>` },
+        mountain: { title: '🌲 后山', content: `<p style="text-align:center;color:#5a3a2a;">后山正在建设中...</p>` },
+        library: { title: '📚 藏书阁', content: `<p style="text-align:center;color:#5a3a2a;">藏书阁正在建设中...</p>` },
+        gate: {
+            title: '🚪 山门',
+            content: `
+                <p style="text-align:center;color:#5a3a2a;font-size:13px;margin-bottom:12px;">山门外就是广阔的江湖世界。</p>
+                <p style="text-align:center;color:#8b6914;font-size:12px;margin-bottom:16px;">出师条件：功力达到5000 · 已觉醒命格≥3个</p>
+                <div style="text-align:center;padding:16px;">
+                    <span style="font-size:14px;color:#5a3a2a;">
+                        功力: ${fmt(G.power)}/5000 | 命格: ${G.awakenedFates.length}/3
+                    </span>
+                </div>
+                ${G.power >= 5000 && G.awakenedFates.length >= 3 ? `
+                    <button class="practice-btn" style="width:100%;" onclick="doGraduate()">🎓 出师！闯荡江湖</button>
+                ` : `
+                    <p style="text-align:center;color:#a08060;font-size:12px;">还需继续修炼...</p>
+                `}
+            `
+        }
+    };
+    
+    const p = places[place];
+    if(!p) return;
+    
+    panel.className = 'panel active';
+    panel.innerHTML = `<span class="panel-back" onclick="closePanel()">← 返回</span>
+        <div class="panel-title">${p.title}</div>${p.content}`;
+    
+    // 如果是练功场，渲染武功列表
+    if(place === 'practice') renderSkills();
+}
+
+function closePanel(){
+    document.getElementById('panel').className = 'panel';
+}
+
+// ==================== 武功系统 ====================
+const SKILL_DATA = [
+    { id:'basic_fist', name:'基础拳法', type:'拳掌', desc:'最基本的拳脚功夫', power:10, speed:10, cost:2, expPerAct:5 },
+    { id:'taiji', name:'太极拳', type:'拳掌', desc:'以柔克刚，四两拨千斤', power:30, speed:8, cost:5, expPerAct:4 },
+    { id:'eighteen_dragon', name:'降龙十八掌', type:'拳掌', desc:'天下至刚至阳的掌法', power:80, speed:4, cost:15, expPerAct:3 },
+    { id:'basic_sword', name:'基础剑法', type:'剑法', desc:'剑术入门', power:12, speed:12, cost:3, expPerAct:5 },
+    { id:'dggu', name:'独孤九剑', type:'剑法', desc:'破尽天下武学', power:70, speed:15, cost:12, expPerAct:3 },
+    { id:'dark_iron', name:'玄铁剑法', type:'剑法', desc:'重剑无锋，大巧不工', power:90, speed:3, cost:18, expPerAct:2 },
+    { id:'basic_blade', name:'基础刀法', type:'刀法', desc:'刀术入门', power:14, speed:10, cost:3, expPerAct:5 },
+    { id:'hujia', name:'胡家刀法', type:'刀法', desc:'快准狠，刀刀致命', power:55, speed:12, cost:10, expPerAct:3 },
+    { id:'green_dragon', name:'青龙刀法', type:'刀法', desc:'威猛霸道', power:75, speed:5, cost:14, expPerAct:2 },
+    { id:'breath', name:'吐纳心法', type:'内功', desc:'调息养气，培元固本', power:0, speed:0, cost:0, expPerAct:6 },
+    { id:'yijing', name:'易筋经', type:'内功', desc:'少林无上内功', power:0, speed:0, cost:0, expPerAct:3 },
+    { id:'jiuyang', name:'九阳神功', type:'内功', desc:'内力生生不息', power:0, speed:0, cost:0, expPerAct:2 },
+    { id:'basic_light', name:'基础轻功', type:'轻功', desc:'身法入门', power:0, speed:0, cost:0, expPerAct:6 },
+    { id:'tiyun', name:'梯云纵', type:'轻功', desc:'武当轻功绝学', power:0, speed:0, cost:0, expPerAct:4 },
+    { id:'lingbo', name:'凌波微步', type:'轻功', desc:'逍遥派无上身法', power:0, speed:0, cost:0, expPerAct:2 },
+];
+
+const MASTERY = ['初学乍练','粗通皮毛','略有小成','驾轻就熟','融会贯通','炉火纯青','登峰造极','出神入化','超凡入圣','返璞归真'];
+const MAX_EXP = 5000;
+
+function renderSkills(){
+    const grid = document.getElementById('skillGrid');
+    if(!grid) return;
+    
+    if(!G.skills || G.skills.length === 0){
+        SKILL_DATA.forEach(s => {
+            G.skills.push({id:s.id, exp:0, masteryLevel:0});
+        });
+    }
+    
+    grid.innerHTML = SKILL_DATA.map(s => {
+        const gs = G.skills.find(x => x.id === s.id);
+        const level = gs ? gs.masteryLevel : 0;
+        const exp = gs ? gs.exp : 0;
+        const progress = Math.min(100, (exp / MAX_EXP) * 100);
+        return `<div class="skill-card" onclick="selectSkill('${s.id}')">
+            <div class="sk-name">${s.name}</div>
+            <div class="sk-type">${s.type} · 威力${s.power} · 速度${s.speed}</div>
+            <div class="sk-lv">${MASTERY[level]} (${Math.floor(exp)}/${MAX_EXP})</div>
+            <div class="sk-bar"><div class="sk-fill" style="width:${progress}%"></div></div>
+        </div>`;
+    }).join('');
+}
+
+let selectedSkill = null;
+function selectSkill(id){
+    selectedSkill = id;
+    const s = SKILL_DATA.find(x => x.id === id);
+    const btn = document.getElementById('practiceBtn');
+    const text = document.getElementById('actText');
+    const anim = document.getElementById('actAnim');
+    if(btn) btn.style.display = 'inline-block';
+    if(text) text.textContent = `你站到木人桩前，准备练习【${s.name}】...`;
+    if(anim) anim.textContent = s.type === '内功' ? '🧘' : s.type === '轻功' ? '🏃' : '👊';
+}
+
+function doPractice(){
+    if(!selectedSkill) return;
+    const s = SKILL_DATA.find(x => x.id === selectedSkill);
+    const gs = G.skills.find(x => x.id === selectedSkill);
+    if(!s || !gs) return;
+    
+    if(gs.masteryLevel >= 9 && gs.exp >= MAX_EXP){
+        document.getElementById('actText').textContent = '这门武功你已经练至化境，无需再练。';
+        return;
+    }
+    
+    // 修炼速度受先天命格影响
+    let speedBonus = 1;
+    if(G.innateFate?.effects?.cultSpeed) speedBonus = G.innateFate.effects.cultSpeed;
+    if(G.innateFate?.effects?.soloBonus) speedBonus += G.innateFate.effects.soloBonus - 1;
+    
+    const gain = Math.floor(s.expPerAct * speedBonus * (0.8 + Math.random() * 0.4));
+    gs.exp += gain;
+    
+    // 境界提升
+    while(gs.masteryLevel < 9 && gs.exp >= (gs.masteryLevel + 1) * 500){
+        gs.masteryLevel++;
+        G.logs.push(`✨ 【${s.name}】突破至【${MASTERY[gs.masteryLevel]}】！`);
+    }
+    
+    G.power += Math.floor(gain * (s.power / 20 || 1));
+    G.days++;
+    G.totalActions++;
+    G.actionLog.push('练功');
+    
+    const descs = [
+        '你扎稳马步，一拳一拳地练习',
+        '你全神贯注，每一招都力求精准',
+        '汗水浸透了衣衫，但你毫不在意',
+        '你感觉对这门武功的理解又深了一层',
+        '木人桩发出沉闷的撞击声，回荡在练功场上'
+    ];
+    document.getElementById('actText').textContent = descs[Math.floor(Math.random() * descs.length)] + ` 熟练度+${gain}`;
+    
+    // 检查命格
+    checkFates();
+    render();
+    save();
+}
+
+// ==================== 小屋行动 ====================
+function doAct(type){
+    const anim = document.getElementById('actAnim');
+    const text = document.getElementById('actText');
+    
+    if(type === '打坐'){
+        anim.textContent = '🧘';
+        const cultGain = Math.floor(5 + Math.random() * 10 + G.days * 0.1);
+        G.cultivation += cultGain;
+        G.power += Math.floor(cultGain * 0.3);
+        G.days++;
+        G.totalActions++;
+        G.actionLog.push('打坐');
+        text.textContent = `你盘膝而坐，五心朝天。内力在经脉中缓缓流转... 修为+${cultGain}`;
+    } else if(type === '休息'){
+        anim.textContent = '😴';
+        G.days++;
+        G.actionLog.push('休息');
+        text.textContent = '你美美地睡了一觉，醒来神清气爽。';
+    }
+    
+    checkFates();
+    render();
+    save();
+}
+
+// ==================== 后天命格检测 ====================
+function checkFates(){
+    if(!G.awakenedFates) G.awakenedFates = [];
+    
+    const latents = [
+        {
+            id:'tiandaochouqin', name:'天道酬勤', desc:'全修炼速度+20%',
+            check: function(g) {
+                const threshold = g.innateFate?.effects?.dayHalved ? 50 : 100;
+                return g.days >= threshold && !g.awakenedFates.includes('tiandaochouqin');
+            },
+            effect: {cultSpeedAll:0.2}
+        },
+        {
+            id:'xinshuruzhi', name:'心如止水', desc:'突破概率+20%',
+            check: function(g) {
+                const threshold = g.innateFate?.effects?.dayHalved ? 15 : 30;
+                const recent = (g.actionLog || []).slice(-threshold);
+                if(recent.length < threshold) return false;
+                return recent.every(a => a === '打坐') && !g.awakenedFates.includes('xinshuruzhi');
+            }
+        }
+    ];
+    
+    let newFates = [];
+    latents.forEach(f => {
+        if(f.check(G)){
+            let prob = 1.0;
+            if(G.innateFate?.effects?.latentMultiplier) prob *= G.innateFate.effects.latentMultiplier;
+            if(Math.random() < prob){
+                G.awakenedFates.push(f.id);
+                newFates.push(f);
+                G.logs.push(`🏆 觉醒后天命格：【${f.name}】— ${f.desc}`);
+            }
+        }
+    });
+    
+    if(newFates.length > 0){
+        save();
+        setTimeout(() => showAlert(newFates), 500);
+    }
+}
+
+function showAlert(fates){
+    const html = fates.map(f => `
+        <h3>🏆 命格觉醒</h3>
+        <p style="font-size:18px;font-weight:700;color:#8b2500;margin:8px 0;">【${f.name}】</p>
+        <p>${f.desc}</p>
+    `).join('<hr style="border-color:#d4c5a9;margin:8px 0;">');
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'alert-overlay';
+    overlay.innerHTML = `<div class="alert-box">${html}<button class="alert-btn" onclick="this.closest('.alert-overlay').remove()">继续修炼</button></div>`;
+    document.body.appendChild(overlay);
+}
+
+// ==================== 初始化 ====================
+function init(){
+    render();
+    save();
+    setInterval(save, 30000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>

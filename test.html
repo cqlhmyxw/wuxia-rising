@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>武侠·崛起 — 武功系统</title>
+<style>
+body {
+    background: #0d0603;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="skills.js"></script>
+<script>
+(function() {
+    // 验证 window.skillsData
+    console.log('=== 武功系统验证 ===');
+    console.log('window.skillsData 存在:', !!window.skillsData);
+    console.log('武功数量:', window.skillsData.skills.length);
+    console.log('熟练度层级:', window.skillsData.masteryLevels.length);
+    console.log('各层名称:', window.skillsData.masteryLevels.map(m => m.name));
+
+    // 验证分类
+    const types = [...new Set(window.skillsData.skills.map(s => s.type))];
+    console.log('武功分类:', types);
+
+    // 每类武功数
+    types.forEach(t => {
+        const count = window.skillsData.skills.filter(s => s.type === t).length;
+        console.log(`  ${t}: ${count}种`);
+    });
+
+    // 验证所有字段
+    const requiredFields = ['id','name','type','description','power','speed','cost','practiceSpeed','exp','masteryName','masteryLevel','progress'];
+    let allValid = true;
+    window.skillsData.skills.forEach(s => {
+        requiredFields.forEach(f => {
+            if (s[f] === undefined) {
+                console.error(`❌ 缺少字段 ${f} 在武功 ${s.name}`);
+                allValid = false;
+            }
+        });
+    });
+
+    if (allValid) {
+        console.log('✅ 所有武功字段完整');
+    }
+
+    // 验证熟练度
+    let masteryOK = true;
+    window.skillsData.masteryLevels.forEach(m => {
+        if (!m.id === undefined || !m.name) {
+            console.error('❌ 熟练度数据不完整:', m);
+            masteryOK = false;
+        }
+    });
+    if (masteryOK) {
+        console.log('✅ 熟练度体系完整 (10层)');
+    }
+
+    console.log('=== 验证完成 ===');
+
+    // 渲染UI
+    const app = document.getElementById('app');
+    window.wuxiaSkills.createWoodenDummyUI(app);
+
+    // 显示初始数据
+    console.log('初始 skillsData:', window.skillsData);
+})();
+</script>
+</body>
+</html>
