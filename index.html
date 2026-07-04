@@ -271,7 +271,9 @@ function openPlace(place){
         <div class="act-area">
             <div class="act-circle" id="ac">👊</div>
             <div class="act-text" id="at">点击一门武功开始修炼...</div>
-            <button class="act-btn" id="pb" style="display:none;" onclick="doPractice()">开始练功</button>
+            <button class="act-btn" id="pb" style="display:none;" onclick="doPractice()">🖱️ 手动练功</button>
+            <button class="act-btn" id="autoBtn" style="display:none;background:#5a7a3a;" onclick="toggleAutoPractice()">🤖 自动修炼</button>
+            <div style="font-size:10px;color:#a08060;margin-top:6px;">💡 手动收益更高，可能触发顿悟！武功Lv.3后可自动修炼</div>
         </div>`;
     }
     else if(place === '钓鱼台'){
@@ -327,22 +329,40 @@ function closeP(){
     currentPlace = null;
 }
 
-// ==================== 练功 ====================
+// ==================== 修炼核心系统 ====================
+
 function pickSkill(id){
     selectedSkill = id;
     const s = SKILLS.find(x=>x.id===id);
     const btn = document.getElementById('pb');
+    const autoBtn = document.getElementById('autoBtn');
     const t = document.getElementById('at');
     const a = document.getElementById('ac');
     if(btn){ btn.style.display='inline-block'; }
+    if(autoBtn){
+        const canAuto = canAutoPractice(id);
+        autoBtn.style.display = canAuto ? 'inline-block' : 'none';
+        autoBtn.textContent = '🤖 自动修炼';
+        autoBtn.style.background = '#5a7a3a';
+    }
     if(t) t.textContent = `准备练习【${s.name}】...`;
     if(a) a.textContent = s.ico||'👊';
-    // 高亮选中
     document.querySelectorAll('.sc').forEach(el=>el.classList.remove('active'));
     const el = document.querySelector(`.sc[data-id="${id}"]`);
     if(el) el.classList.add('active');
 }
 
+// 手动修炼触发事件表
+const PRACTICE_EVENTS = [
+    { name:'正常修炼', prob:0.70, mult:1.0, msg:'你专注地练习着...' },
+    { name:'灵光乍现', prob:0.15, mult:3.0, msg:'💡 脑海中灵光一闪！对这一招的理解突然加深了！' },
+    { name:'融会贯通', prob:0.08, mult:5.0, msg:'✨ 以前不通之处，今日豁然开朗！' },
+    { name:'天人感应', prob:0.05, mult:8.0, msg:'🌌 进入忘我境界，与天地共鸣！' },
+    { name:'顿悟', prob:0.015, mult:15.0, msg:'🌟 大彻大悟！武学境界突飞猛进！' },
+    { name:'天道酬勤·触发', prob:0.005, mult:30.0, msg:'☀️ 天道酬勤！你的努力感动了上天！' },
+];
+
+// 手动修炼
 function doPractice(){
     if(!selectedSkill) return;
     const s = SKILLS.find(x=>x.id===selectedSkill);
@@ -352,25 +372,139 @@ function doPractice(){
         document.getElementById('at').textContent = '此功已至化境，无需再练。'; return;
     }
     
+    // 基础收益
     let bonus = 1;
     if(G.innateFates.some(f=>f.id==='tl')) bonus += 0.5;
     if(G.innateFates.some(f=>f.id==='ts')) bonus += 0.3;
     if(G.awakenedFates.includes('tdcq')) bonus += 0.2;
     
-    const gain = Math.floor(s.expPer * bonus * rnd(0.8,1.2));
+    // 手动修炼固定1.5倍
+    bonus *= 1.5;
+    
+    // 抽取随机事件
+    let mult = 1;
+    let eventMsg = '';
+    let r = Math.random();
+    let cum = 0;
+    for(const ev of PRACTICE_EVENTS){
+        cum += ev.prob;
+        if(r < cum){ mult = ev.mult; eventMsg = ev.msg; break; }
+    }
+    
+    const gain = Math.floor(s.expPer * bonus * mult * rnd(0.9,1.1));
     gs.exp += gain;
     while(gs.lv<9 && gs.exp>=(gs.lv+1)*500){ gs.lv++; addLog(`✨【${s.name}】突破至【${LV[gs.lv]}】`); }
-    G.power += Math.floor(gain*(s.pow/15||1));
+    G.power += Math.floor(gain*(s.pow/12||1));
     G.cult += Math.floor(gain*0.3);
     G.days++; G.acts++; G.actLog.push('练功');
     
-    const ds = ['扎稳马步，一拳拳练习','全神贯注，力求精准','汗水浸透衣衫，毫不在意','对武功的理解又深了一层','木人桩发出沉闷的撞击声'];
-    document.getElementById('at').textContent = ds[Math.floor(Math.random()*ds.length)] + ` 熟练度+${gain}`;
+    const td = document.getElementById('at');
+    if(eventMsg){
+        td.innerHTML = `${eventMsg}<br><span style="color:#8b2500;font-size:16px;font-weight:700;">熟练度 +${gain}（×${mult}）</span>`;
+        if(mult>=8) showModal('🌟 天赐机缘！', eventMsg.replace(/[💡✨🌌🌟☀️]/g,''));
+    } else {
+        td.innerHTML = `${['专注练习','一招一式反复打磨','力求每个动作精准','调息运气，连贯使出'][Math.floor(Math.random()*4)]}...<br>熟练度 +${gain}`;
+    }
     
-    checkFates();
-    save();
-    // 刷新武功列表和经验条
-    if(currentPlace==='练功场') setTimeout(()=>openPlace('练功场'),100);
+    // 经验条动画
+    const bar = document.querySelector(`.sc[data-id="${selectedSkill}"] .sfill`);
+    if(bar){
+        const pct = Math.min(100, gs.exp/MAX_EXP*100);
+        bar.style.width = pct+'%';
+    }
+    
+    checkFates(); save();
+}
+
+// 检查是否可自动修炼
+function canAutoPractice(skillId){
+    const gs = G.skills.find(x=>x.id===skillId);
+    if(!gs) return false;
+    const s = SKILLS.find(x=>x.id===skillId);
+    if(!s) return false;
+    // 基础武功Lv3可自动，高级武功Lv5可自动
+    const basicTypes = ['拳掌','剑法','刀法'];
+    const threshold = basicTypes.includes(s.type) ? 3 : 5;
+    return gs.lv >= threshold && gs.lv < 9;
+}
+
+// 自动修炼（每3秒执行一次）
+let autoTimer = null;
+function toggleAutoPractice(){
+    if(autoTimer){
+        clearInterval(autoTimer); autoTimer = null;
+        document.getElementById('autoBtn').textContent = '🤖 自动修炼';
+        document.getElementById('autoBtn').style.background = '#5a7a3a';
+        return;
+    }
+    if(!selectedSkill || !canAutoPractice(selectedSkill)){
+        if(!selectedSkill) alert('请先选择一门武功');
+        else alert('此武功需要达到「略有小成」才可自动修炼');
+        return;
+    }
+    document.getElementById('autoBtn').textContent = '⏹ 停止自动';
+    document.getElementById('autoBtn').style.background = '#8b2500';
+    
+    autoTimer = setInterval(() => {
+        if(!selectedSkill || !canAutoPractice(selectedSkill)){
+            clearInterval(autoTimer); autoTimer = null;
+            document.getElementById('autoBtn').textContent = '🤖 自动修炼';
+            document.getElementById('autoBtn').style.background = '#5a7a3a';
+            return;
+        }
+        // 自动修炼收益是手动的0.8倍，无随机事件
+        const s = SKILLS.find(x=>x.id===selectedSkill);
+        let gs = G.skills.find(x=>x.id===selectedSkill);
+        if(!s||!gs) return;
+        let bonus = 1;
+        if(G.innateFates.some(f=>f.id==='tl')) bonus += 0.5;
+        if(G.awakenedFates.includes('tdcq')) bonus += 0.2;
+        bonus *= 0.8; // 自动倍率
+        const gain = Math.floor(s.expPer * bonus * rnd(0.8,1.0));
+        gs.exp += gain;
+        while(gs.lv<9 && gs.exp>=(gs.lv+1)*500){ gs.lv++; addLog(`✨【${s.name}】突破至【${LV[gs.lv]}】`); }
+        G.power += Math.floor(gain*(s.pow/15||1));
+        G.days++; G.acts++;
+        // 更新进度条
+        const bar = document.querySelector(`.sc[data-id="${selectedSkill}"] .sfill`);
+        if(bar) bar.style.width = Math.min(100, gs.exp/MAX_EXP*100)+'%';
+        save();
+    }, 3000);
+}
+
+// 离线挂机收益
+function checkOffline(){
+    const now = Date.now();
+    const elapsed = now - (G.lastSave || now);
+    if(elapsed < 60000) return; // 少于1分钟不计
+    const offlineMins = Math.floor(elapsed / 60000);
+    const maxMins = 480; // 最多离线8小时
+    const mins = Math.min(offlineMins, maxMins);
+    if(mins < 2) return;
+    
+    // 离线挂机收益
+    let totalPower = 0, totalCult = 0;
+    G.skills.forEach(gs => {
+        if(gs.lv >= 3){ // 只有可自动修炼的武功才有离线收益
+            const s = SKILLS.find(x=>x.id===gs.id);
+            if(s){
+                const gain = Math.floor(s.expPer * 0.4 * mins * rnd(0.8,1.0));
+                gs.exp += gain;
+                totalPower += Math.floor(gain*(s.pow/20||1));
+                while(gs.lv<9 && gs.exp>=(gs.lv+1)*500){ gs.lv++; addLog(`✨离线修炼：【${s.name}】突破至【${LV[gs.lv]}】`); }
+            }
+        }
+    });
+    // 基础打坐离线收益
+    const cultGain = Math.floor(mins * 2 * rnd(0.8,1.2));
+    G.cult += cultGain;
+    G.power += Math.floor(cultGain * 0.2);
+    G.days += Math.floor(mins / 5); // 每5分钟算一天
+    
+    if(totalPower > 0 || cultGain > 0){
+        addLog(`⏰ 离线修炼归来（${mins}分钟）：功力+${Math.floor(totalPower+cultGain*0.2)}，修为+${cultGain}`);
+        showModal('⏰ 离线修炼归来', `你离开了${mins}分钟，但修炼从未停止。<br>功力 +${Math.floor(totalPower+cultGain*0.2)}<br>修为 +${cultGain}`);
+    }
 }
 
 // ==================== 其他行动 ====================
@@ -483,6 +617,9 @@ function showModal(title,msg){
 
 // ==================== 初始化 ====================
 function init(){
+    // 检测离线收益
+    checkOffline();
+    
     if(!G.innateFates||G.innateFates.length===0){
         // 抽取3个先天命格
         const fates = [];
