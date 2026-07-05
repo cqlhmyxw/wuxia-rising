@@ -261,12 +261,12 @@ function openPlace(place){
         <div class="ptitle">🪵 练功场</div>
         <div class="sg2">${SKILLS.map(s=>{
             const gs = G.skills.find(x=>x.id===s.id)||{exp:0,lv:0};
-            const pct = Math.min(100, gs.exp/MAX_EXP*100);
+            const pct = Math.min(100, ((gs.exp-gs.lv*500)/((gs.lv+1)*500-gs.lv*500))*100);
             return `<div class="sc" data-id="${s.id}" onclick="pickSkill('${s.id}')">
                 <div class="sn">${s.ico} ${s.name}</div>
                 <div class="stp">${s.type}·威力${s.pow}</div>
-                <div class="slv">${LV[gs.lv]} (${Math.floor(gs.exp)}/${MAX_EXP})</div>
-                <div class="sbar"><div class="sfill" style="width:${pct}%"></div></div>
+                <div class="slv">${LV[gs.lv]}【${Math.floor(((gs.exp-gs.lv*500)/((gs.lv+1)*500-gs.lv*500))*100)}%】</div>
+                <div class="sbar"><div class="sfill" style="width:${((gs.exp-gs.lv*500)/((gs.lv+1)*500-gs.lv*500))*100}%"></div></div>
             </div>`;
         }).join('')}</div>
         <div class="act-area">
@@ -402,7 +402,14 @@ function doPractice(){
     
     const gain = Math.floor(s.expPer * bonus * mult * rnd(0.9,1.1));
     gs.exp += gain;
-    while(gs.lv<9 && gs.exp>=(gs.lv+1)*500){ gs.lv++; addLog(`✨【${s.name}】突破至【${LV[gs.lv]}】`); }
+    while(gs.lv<9 && gs.exp>=(gs.lv+1)*500){ 
+        gs.lv++; 
+        // 每次突破，增加人物属性
+        const lvBonus = 10 + gs.lv * 5;
+        G.power += lvBonus;
+        G.cult += Math.floor(lvBonus * 0.5);
+        addLog(`✨【${s.name}】突破至【${LV[gs.lv]}】— 功力+${lvBonus}，修为+${Math.floor(lvBonus*0.5)}`);
+    }
     G.power += Math.floor(gain*(s.pow/12||1));
     G.cult += Math.floor(gain*0.3);
     G.days++; G.acts++; G.actLog.push('练功');
@@ -418,12 +425,12 @@ function doPractice(){
     // 经验条动画+卡片状态刷新
     const bar = document.querySelector(`.sc[data-id="${selectedSkill}"] .sfill`);
     if(bar){
-        const pct = Math.min(100, gs.exp/MAX_EXP*100);
-        bar.style.width = pct+'%';
+        const pct2 = Math.min(100, ((gs.exp-gs.lv*500)/((gs.lv+1)*500-gs.lv*500))*100);
+        bar.style.width = pct2+'%';
     }
-    // 刷新当前武功卡片的境界显示
+    // 刷新当前武功卡片的境界显示（当前层百分比）
     const lvEl = document.querySelector(`.sc[data-id="${selectedSkill}"] .slv`);
-    if(lvEl) lvEl.textContent = `${LV[gs.lv]} (${Math.floor(gs.exp)}/${MAX_EXP})`;
+    if(lvEl) lvEl.textContent = `${LV[gs.lv]}【${Math.floor(((gs.exp-gs.lv*500)/((gs.lv+1)*500-gs.lv*500))*100)}%】`;
     // 刷新练功场按钮状态
     const pb = document.getElementById('pb');
     if(pb) pb.textContent = `🖱️ 手动练功 (熟练度 +${Math.floor(s.expPer * bonus * rnd(0.9,1.1))})`;
