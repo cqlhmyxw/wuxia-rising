@@ -121,6 +121,7 @@ body{
     border-radius:6px;padding:8px 20px;font-size:13px;font-family:inherit;cursor:pointer;
 }
 </style>
+<script src="skills.js"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -414,12 +415,18 @@ function doPractice(){
         td.innerHTML = `${['专注练习','一招一式反复打磨','力求每个动作精准','调息运气，连贯使出'][Math.floor(Math.random()*4)]}...<br>熟练度 +${gain}`;
     }
     
-    // 经验条动画
+    // 经验条动画+卡片状态刷新
     const bar = document.querySelector(`.sc[data-id="${selectedSkill}"] .sfill`);
     if(bar){
         const pct = Math.min(100, gs.exp/MAX_EXP*100);
         bar.style.width = pct+'%';
     }
+    // 刷新当前武功卡片的境界显示
+    const lvEl = document.querySelector(`.sc[data-id="${selectedSkill}"] .slv`);
+    if(lvEl) lvEl.textContent = `${LV[gs.lv]} (${Math.floor(gs.exp)}/${MAX_EXP})`;
+    // 刷新练功场按钮状态
+    const pb = document.getElementById('pb');
+    if(pb) pb.textContent = `🖱️ 手动练功 (熟练度 +${Math.floor(s.expPer * bonus * rnd(0.9,1.1))})`;
     
     checkFates(); save();
 }
