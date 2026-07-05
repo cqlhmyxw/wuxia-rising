@@ -198,7 +198,7 @@ function showSub(html){
 // ===== 主地图(山谷) =====
 function renderMap(){
   G = ld();
-  const fateStr = G.innateFates.map(f=>`<span style="color:${C_RAR[f.r]}">${STAR[f.r]}${f.n}</span>`).join('');
+  const fateStr = G.innateFates.map(f=>`<span style="color:${C_RAR[f.rar]||'#888'}">${STAR[f.rar]||''}${f.name||'?'}</span>`).join('');
   const app = document.getElementById('app');
   app.innerHTML = `
   <div id="mainScene">
@@ -275,6 +275,407 @@ function renderHouse(){
     <div class="ac"><div class="ci" id="acIco">🧘</div><div class="ct" id="acTxt">选择要做的事...</div></div>
   </div>`;
   showSub(p.innerHTML);
-}</script>
+
+// ===== 初始化 =====
+function init(){
+  G = ld();
+  // 检查是否存在存档，没有则显示命格抽选
+  if(!G.hasFate || G.innateFates.length===0){
+    showFateDraw();
+  } else {
+    renderMap();
+  }
+  sv();
+  setInterval(sv, 30000);
+}
+
+function showFateDraw(){
+  const fates = [];
+  for(let i=0;i<3;i++) fates.push(drF());
+  fates.sort((a,b)=>'SABCD'.indexOf(a.r)-'SABCD'.indexOf(b.r));
+  G.innateFates = fates;
+  G.hasFate = true;
+  
+  const app = document.getElementById('app');
+  app.innerHTML = `
+  <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5e6c8;padding:20px;">
+    <div style="background:#fff8ef;border:3px solid #8b2500;border-radius:12px;padding:24px;max-width:320px;width:100%;text-align:center;">
+      <div style="font-size:32px;margin-bottom:12px;">🔮</div>
+      <h2 style="color:#2c1810;margin-bottom:16px;">你的天命</h2>
+      ${fates.map(f=>`<div style="margin:8px 0;padding:10px;border:1px solid ${C_RAR[f.r]};border-radius:6px;">
+        <span style="color:${C_RAR[f.r]};font-size:14px;">${STAR[f.r]}</span>
+        <span style="font-size:16px;font-weight:700;color:#2c1810;">${f.n||f.name}</span>
+        <p style="font-size:11px;color:#5a3a2a;margin-top:4px;">${f.desc}</p>
+      </div>`).join('')}
+      <button class="btn" onclick="renderMap()" style="margin-top:12px;">踏入江湖</button>
+    </div>
+  </div>`;
+  sv();
+}
+
+// ===== 小屋行动 =====
+function doAct(type){
+  if(type==='打坐'){
+    const g = Math.floor(8+rn(0,10)+G.days*0.1);
+    G.cult+=g; G.power+=Math.floor(g*0.3);
+    G.days++; G.acts++; G.actLog.push('打坐');
+    document.getElementById('acIco').textContent='🧘';
+    document.getElementById('acTxt').textContent=`盘膝而坐，内力流转... 修为+${g}`;
+  } else {
+    G.days++; G.actLog.push('休息');
+    document.getElementById('acIco').textContent='😴';
+    document.getElementById('acTxt').textContent='美美地睡了一觉，神清气爽。';
+  }
+  sv();
+}
+
+// ===== 练功 =====
+function doPractice(){
+  if(!curSkill){
+    document.getElementById('acTxt').innerHTML='⚠️ 请先选择一门武功！';
+    return;
+  }
+  const s = SKILLS.find(x=>x.id===curSkill);
+  let gs = G.skills.find(x=>x.id===curSkill);
+  if(!s||!gs) return;
+  if(gs.lv>=9&&gs.exp>=MAX_EXP){
+    document.getElementById('acTxt').textContent='此功已至化境，无需再练。'; return;
+  }
+  
+  let bonus = 1;
+  if(G.innateFates.some(f=>f.id==='tl')) bonus+=0.5;
+  if(G.innateFates.some(f=>f.id==='ts')) bonus+=0.3;
+  if(G.awakenedFates.includes('tdcq')) bonus+=0.2;
+  bonus *= 1.5;
+  
+  let mult=1, eventMsg='', r=Math.random(), cum=0;
+  for(const ev of PRACTICE_EVENTS){cum+=ev.p;if(r<cum){mult=ev.m;eventMsg=ev.msg;break;}}
+  
+  const gain = Math.floor(s.expPer * bonus * mult * rn(0.9,1.1));
+  gs.exp += gain;
+  while(gs.lv<9 && gs.exp>=(gs.lv+1)*500){
+    gs.lv++;
+    const lvB = 10+gs.lv*5;
+    G.power+=lvB; G.cult+=Math.floor(lvB*0.5);
+  }
+  G.power += Math.floor(gain*(s.pow/12||1));
+  G.cult += Math.floor(gain*0.3);
+  G.days++; G.acts++;
+  
+  document.getElementById('acTxt').innerHTML = eventMsg ? `${eventMsg}<br><span style="color:#8b2500;font-size:15px;font-weight:700;">熟练度 +${gain}（×${mult}）</span>` : `专注练习... 熟练度 +${gain}`;
+  
+  // 刷新卡片
+  const lvEl = document.querySelector(`.sc[onclick*="${curSkill}"] .slv`);
+  if(lvEl){
+    const pct=Math.floor(((gs.exp-gs.lv*500)/((gs.lv+1)*500-gs.lv*500))*100);
+    lvEl.textContent=`${LV[gs.lv]}【${pct}%】`;
+  }
+  const bar = document.querySelector(`.sc[onclick*="${curSkill}"] .sfill`);
+  if(bar) bar.style.width = Math.min(100,((gs.exp-gs.lv*500)/((gs.lv+1)*500-gs.lv*500))*100)+'%';
+  
+  checkFates(); sv();
+}
+
+// ===== 钓鱼 =====
+function renderFish(){
+  showSub(`<div class="sp-top"><span class="sp-back" onclick="showScene('map')">←</span><span class="sp-title">🎣 钓鱼台</span></div>
+  <div class="sp-body"><div style="text-align:center;padding:20px 0;"><div style="font-size:64px;">🎣</div>
+  <p style="font-size:12px;color:#5a3a2a;margin:10px 0;">碧波荡漾，垂柳依依。</p>
+  <button class="btn g" onclick="doFish()">🎣 开始钓鱼</button></div>
+  <div class="ac"><div class="ci">🎣</div><div class="ct" id="acTxt">水面平静...</div></div></div>`);
+}
+function doFish(){
+  const evts=[
+    {t:'钓到一条肥美的鲤鱼！修为+15',c:15},{t:'钓上一只破鞋子...运气不佳',c:2},
+    {t:'钓到一只古旧的木盒，修为+20',c:20},{t:'大鱼上钩！修为+30',c:30},
+    {t:'什么都没钓到，但心情平静',c:5},{t:'钓到一株水灵草！修为+50',c:50},
+  ];
+  const ev=evts[Math.floor(Math.random()*evts.length)];
+  G.cult+=ev.c; G.power+=Math.floor(ev.c*0.2); G.days++;
+  document.getElementById('acTxt').textContent=ev.t;
+  sv();
+}
+
+// ===== 后山 =====
+function renderBackHill(){
+  showSub(`<div class="sp-top"><span class="sp-back" onclick="showScene('map')">←</span><span class="sp-title">🌲 后山</span></div>
+  <div class="sp-body"><div class="area-grid">
+    <div class="area-card" style="background:#5a7a3a20;border:1px solid #5a7a3a;" onclick="goTo('外围')">
+      <div class="ico">🌳</div><div style="font-weight:700;">外围</div>
+      <div style="font-size:10px;color:#5a7a3a;">野狼🐺 野猪🐗</div></div>
+    <div class="area-card" style="background:#8b691420;border:1px solid #8b6914;" onclick="goTo('深处')">
+      <div class="ico">🌲</div><div style="font-weight:700;">深处</div>
+      <div style="font-size:10px;color:#8b6914;">毒蛇🐍 山贼🗡️ 猛虎🐯</div></div>
+    <div class="area-card" style="background:#8b250020;border:1px solid #8b2500;" onclick="goTo('险地')">
+      <div class="ico">⛰️</div><div style="font-weight:700;">险地</div>
+      <div style="font-size:10px;color:#8b2500;">黑熊🐻 山魈👺 巨蟒🐉</div></div>
+  </div>
+  <div id="battleArea" style="display:none;">
+    <div class="bf"><div class="mi" id="monIco">🐺</div>
+    <div class="hi" id="monInfo">准备战斗</div>
+    <div class="hb"><div class="hf" id="monHpBar" style="width:100%"></div></div>
+    <div class="bb">
+      <button class="b1" onclick="battle('atk')">⚔️ 攻击</button>
+      <button class="b2" onclick="battle('def')">🛡️ 防御</button>
+      <button class="b3" onclick="battle('run')">🏃 逃跑</button>
+    </div></div>
+  </div></div>`);
+}
+
+let curMon=null, inB=false;
+function goTo(area){
+  const pool=MONSTERS[area];
+  curMon={...pool[Math.floor(Math.random()*pool.length)]};
+  curMon.mh=curMon.hp; inB=true;
+  document.getElementById('battleArea').style.display='block';
+  document.getElementById('monIco').textContent=curMon.i;
+  document.getElementById('monInfo').innerHTML=`${curMon.i} ${curMon.n} HP:${curMon.hp}/${curMon.mh} 攻击:${curMon.atk}`;
+  document.getElementById('monHpBar').style.width='100%';
+}
+
+function battle(act){
+  if(!inB||!curMon)return;
+  if(act==='run'){document.getElementById('monInfo').textContent='你逃走了...';inB=false;curMon=null;return;}
+  const pa=5+Math.floor(G.power/100);
+  const db=act==='def'?2:1;
+  let dmg=Math.floor((pa+Math.random()*pa)/db);
+  curMon.hp-=dmg;if(curMon.hp<0)curMon.hp=0;
+  let log=`你对${curMon.i}造成了${dmg}点伤害！`;
+  if(curMon.hp>0){
+    let md=Math.floor(curMon.atk*(0.5+Math.random()*0.5));
+    if(act==='def')md=Math.floor(md*0.3);
+    G.power-=md;if(G.power<0)G.power=0;
+    document.getElementById('monInfo').innerHTML=`${log}<br>${curMon.i}反击造成${md}点伤害！HP:${curMon.hp}/${curMon.mh}`;
+    document.getElementById('monHpBar').style.width=(curMon.hp/curMon.mh*100)+'%';
+  } else {
+    G.power+=curMon.exp; G.cult+=Math.floor(curMon.exp*0.5); G.days++;
+    let drp='';
+    if(Math.random()<curMon.dr){drp=`🎁 掉落:${curMon.drp}`;G.cult+=Math.floor(curMon.exp*0.3);}
+    document.getElementById('monInfo').innerHTML=`💀 ${curMon.n}倒下！功力+${curMon.exp} ${drp}`;
+    inB=false;curMon=null;document.getElementById('battleArea').style.display='none';
+  }
+  sv();
+}
+
+// ===== 藏书阁 =====
+function renderLibrary(){
+  showSub(`<div class="sp-top"><span class="sp-back" onclick="showScene('map')">←</span><span class="sp-title">📚 藏书阁</span></div>
+  <div class="sp-body"><div style="text-align:center;padding:20px 0;"><div style="font-size:64px;">📚</div>
+  <p style="font-size:12px;color:#5a3a2a;margin:10px 0;">架上书籍琳琅满目。</p>
+  <button class="btn" onclick="doRead()">📖 开始读书</button></div>
+  <div class="ac"><div class="ci">📖</div><div class="ct" id="acTxt">选一本书来读...</div></div></div>`);
+}
+function doRead(){
+  const books=[
+    {t:'《江湖异闻录》 悟性+1 修为+20',c:20},{t:'《基础内功要义》 修为+25',c:25},
+    {t:'《剑术心得》 修为+30',c:30},{t:'《草药图鉴》 修为+15',c:15},
+    {t:'《天道感应篇》 修为+40',c:40},
+  ];
+  const b=books[Math.floor(Math.random()*books.length)];
+  G.cult+=b.c;G.power+=Math.floor(b.c*0.2);G.days++;
+  document.getElementById('acTxt').textContent=b.t;
+  sv();
+}
+
+// ===== 出师 =====
+function renderGraduate(){
+  const total=(G.awakenedFates?.length||0)+(G.innateFates?.length||0);
+  const can=G.power>=5000 && total>=6;
+  showSub(`<div class="sp-top"><span class="sp-back" onclick="showScene('map')">←</span><span class="sp-title">🚪 山门</span></div>
+  <div class="sp-body"><div style="text-align:center;padding:20px 0;"><div style="font-size:64px;">🚪</div>
+  <p style="font-size:12px;color:#5a3a2a;margin:10px 0;">山门外就是广阔的江湖。</p>
+  <p style="font-size:11px;color:#8b6914;">功力 ${fm(G.power)}/5000 | 命格 ${total}/6</p>
+  ${can?'<button class="btn" onclick="doGraduate()" style="margin-top:12px;">🎓 出师！</button>':'<p style="font-size:11px;color:#a08060;margin-top:12px;">还需修炼...</p>'}
+  </div></div>`);
+}
+function doGraduate(){
+  G.graduate=true;sv();
+  showModal('🎓 出师！','你终于达到了出师标准，山门外的江湖在等着你...（大地图功能开发中）');
+}
+
+// ===== 命格检测 =====
+function checkFates(){
+  if(!G.awakenedFates)G.awakenedFates=[];
+  // 天道酬勤
+  if(G.days>=100 && !G.awakenedFates.includes('tdcq')){
+    let p=1;if(G.innateFates.some(f=>f.id==='ft'||f.id==='pa'))p=2;
+    if(Math.random()<p){G.awakenedFates.push('tdcq');showModal('🏆 命格觉醒','【天道酬勤】<br>全修炼速度+20%');}
+  }
+  sv();
+}
+function showModal(t,m){
+  const ov=document.createElement('div');ov.className='modal-overlay';
+  ov.innerHTML=`<div class="modal"><h3>${t}</h3><p>${m}</p><button class="modal-btn" onclick="this.closest('.modal-overlay').remove()">知道了</button></div>`;
+  document.body.appendChild(ov);
+}
+
+// 启动
+window.onload = function(){ init(); };
+}
+// ===== 核心游戏逻辑 =====
+
+function init(){
+  G = ld();
+  if(!G.innateFates || G.innateFates.length === 0){
+    showFateDraw();
+  } else {
+    renderMap();
+  }
+  sv();
+  setInterval(sv, 30000);
+}
+
+function showFateDraw(){
+  const fates = [];
+  for(let i=0;i<3;i++) fates.push(drF());
+  fates.sort((a,b)=>'SABCD'.indexOf(a.r||'D')-'SABCD'.indexOf(b.r||'D'));
+  G.innateFates = fates;
+  document.getElementById('app').innerHTML = `
+    <div style="display:flex;height:100vh;align-items:center;justify-content:center;background:#f5e6c8;padding:20px;">
+      <div style="background:#fff8ef;border:3px solid #8b2500;border-radius:12px;padding:24px;max-width:320px;width:100%;text-align:center;">
+        <div style="font-size:36px;margin-bottom:12px;">🔮</div>
+        <h2 style="color:#2c1810;margin-bottom:16px;">你的天命</h2>
+        ${fates.map(f=>'<div style="margin:8px 0;padding:10px;border:1px solid '+(C_RAR[f.r]||'#888')+';border-radius:6px;">'+
+          '<span style="color:'+(C_RAR[f.r]||'#888')+';font-size:14px;">'+(STAR[f.r]||'')+'</span>'+
+          '<span style="font-size:16px;font-weight:700;color:#2c1810;">'+(f.n||f.name)+'</span>'+
+          '<p style="font-size:11px;color:#5a3a2a;margin-top:4px;">'+(f.desc||'')+'</p></div>').join('')}
+        <button class="btn" onclick="renderMap()" style="margin-top:12px;">踏入江湖</button>
+      </div>
+    </div>`;
+  sv();
+}
+
+// 练功
+function doPractice(){
+  if(!curSkill){ document.getElementById('acTxt').innerHTML='⚠️ 请先选择一门武功！'; return; }
+  const s = SKILLS.find(x=>x.id===curSkill);
+  let gs = G.skills.find(x=>x.id===curSkill);
+  if(!s||!gs) return;
+  if(gs.lv>=9&&gs.exp>=MAX_EXP){ document.getElementById('acTxt').textContent='此功已至化境。'; return; }
+  let bonus = 1;
+  if(G.innateFates.some(f=>f.id==='tl')) bonus+=0.5;
+  if(G.awakenedFates.includes('tdcq')) bonus+=0.2;
+  bonus *= 1.5;
+  let mult=1,eventMsg='',r=Math.random(),cum=0;
+  for(const ev of PRACTICE_EVENTS){cum+=ev.p;if(r<cum){mult=ev.m;eventMsg=ev.msg;break;}}
+  const gain = Math.floor(s.expPer * bonus * mult * rn(0.9,1.1));
+  gs.exp += gain;
+  while(gs.lv<9 && gs.exp>=(gs.lv+1)*500){ gs.lv++; G.power+=10+gs.lv*5; }
+  G.power += Math.floor(gain*(s.pow/12||1));
+  G.cult += Math.floor(gain*0.3);
+  G.days++;
+  document.getElementById('acTxt').innerHTML = eventMsg ? eventMsg + '<br><span style="color:#8b2500;font-weight:700;">熟练度 +'+gain+'（×'+mult+'）</span>' : '专注练习... 熟练度 +'+gain;
+  checkFates(); sv();
+}
+
+// 小屋
+function doAct(type){
+  if(type==='打坐'){const g=Math.floor(8+rn(0,10)+G.days*0.1);G.cult+=g;G.power+=Math.floor(g*0.3);G.days++;
+    document.getElementById('acTxt').textContent='盘膝而坐，内力流转... 修为+'+g;}
+  else{G.days++;document.getElementById('acTxt').textContent='美美地睡了一觉。';}
+  sv();
+}
+
+// 钓鱼
+function doFish(){
+  const ev=[{t:'钓到一条肥美的鲤鱼！修为+15',c:15},{t:'钓上一只破鞋子...',c:2},{t:'钓到古旧木盒 修为+20',c:20},{t:'大鱼上钩！修为+30',c:30},{t:'心情平静 修为+5',c:5},{t:'钓到水灵草！修为+50',c:50}];
+  const e=ev[Math.floor(Math.random()*ev.length)];
+  G.cult+=e.c;G.power+=Math.floor(e.c*0.2);G.days++;
+  document.getElementById('acTxt').textContent=e.t;sv();
+}
+
+// 后山
+function renderBackHill(){
+  showSub('<div class="sp-top"><span class="sp-back" onclick="showScene(\'map\')">←</span><span class="sp-title">🌲 后山</span></div>'+
+  '<div class="sp-body"><div class="area-grid">'+
+  '<div class="area-card" style="background:#5a7a3a20;border:1px solid #5a7a3a;" onclick="goTo(\'外围\')"><div class="ico">🌳</div><div style="font-weight:700;">外围</div><div style="font-size:10px;color:#5a7a3a;">野狼🐺 野猪🐗</div></div>'+
+  '<div class="area-card" style="background:#8b691420;border:1px solid #8b6914;" onclick="goTo(\'深处\')"><div class="ico">🌲</div><div style="font-weight:700;">深处</div><div style="font-size:10px;color:#8b6914;">毒蛇🐍 山贼🗡️ 猛虎🐯</div></div>'+
+  '<div class="area-card" style="background:#8b250020;border:1px solid #8b2500;" onclick="goTo(\'险地\')"><div class="ico">⛰️</div><div style="font-weight:700;">险地</div><div style="font-size:10px;color:#8b2500;">黑熊🐻 山魈👺 巨蟒🐉</div></div></div>'+
+  '<div id="battleArea"><div class="bf"><div class="mi" id="monIco">🐺</div><div class="hi" id="monInfo">选择区域进入...</div>'+
+  '<div class="hb"><div class="hf" id="monHpBar" style="width:100%"></div></div>'+
+  '<div class="bb"><button class="b1" onclick="battle(\'atk\')">⚔️ 攻击</button><button class="b2" onclick="battle(\'def\')">🛡️ 防御</button><button class="b3" onclick="battle(\'run\')">🏃 逃跑</button></div></div></div></div>');
+  document.getElementById('battleArea').style.display='none';
+}
+
+function goTo(area){
+  const pool={'外围':[{n:'野狼',i:'🐺',hp:30,atk:5,drp:'兽皮',dr:0.3,exp:8},{n:'野猪',i:'🐗',hp:50,atk:7,drp:'獠牙',dr:0.2,exp:12}],'深处':[{n:'毒蛇',i:'🐍',hp:40,atk:9,drp:'蛇胆',dr:0.25,exp:15},{n:'山贼',i:'🗡️',hp:70,atk:12,drp:'碎银',dr:0.4,exp:20},{n:'猛虎',i:'🐯',hp:100,atk:15,drp:'虎骨',dr:0.15,exp:30}],'险地':[{n:'黑熊',i:'🐻',hp:150,atk:18,drp:'熊胆',dr:0.2,exp:40},{n:'山魈',i:'👺',hp:80,atk:22,drp:'精魄',dr:0.1,exp:50},{n:'巨蟒',i:'🐉',hp:200,atk:25,drp:'蛇珠',dr:0.05,exp:80}]};
+  curMon={...pool[area][Math.floor(Math.random()*pool[area].length)]};curMon.mh=curMon.hp;inB=true;
+  document.getElementById('battleArea').style.display='block';
+  document.getElementById('monIco').textContent=curMon.i;
+  document.getElementById('monInfo').innerHTML=curMon.i+' '+curMon.n+' HP:'+curMon.hp+'/'+curMon.mh+' 攻击:'+curMon.atk;
+  document.getElementById('monHpBar').style.width='100%';
+}
+
+function battle(act){
+  if(!inB||!curMon)return;
+  if(act==='run'){document.getElementById('monInfo').textContent='你逃走了...';inB=false;curMon=null;return;}
+  const pa=5+Math.floor(G.power/100);
+  const db=act==='def'?2:1;
+  let dmg=Math.floor((pa+Math.random()*pa)/db);
+  curMon.hp-=dmg;if(curMon.hp<0)curMon.hp=0;
+  let log='你对'+curMon.i+'造成了'+dmg+'点伤害！';
+  if(curMon.hp>0){
+    let md=Math.floor(curMon.atk*(0.5+Math.random()*0.5));
+    if(act==='def')md=Math.floor(md*0.3);
+    G.power-=md;if(G.power<0)G.power=0;
+    document.getElementById('monInfo').innerHTML=log+'<br>'+curMon.i+'反击'+md+'点伤害！'+' HP:'+curMon.hp+'/'+curMon.mh;
+    document.getElementById('monHpBar').style.width=(curMon.hp/curMon.mh*100)+'%';
+  }else{
+    G.power+=curMon.exp;G.cult+=Math.floor(curMon.exp*0.5);G.days++;
+    let d='';if(Math.random()<curMon.dr){d='🎁 掉落:'+curMon.drp;G.cult+=Math.floor(curMon.exp*0.3);}
+    document.getElementById('monInfo').innerHTML='💀 '+curMon.n+'倒下！功力+'+curMon.exp+' '+d;
+    inB=false;curMon=null;document.getElementById('battleArea').style.display='none';
+  }
+  sv();
+}
+
+// 藏书阁  
+function renderLibrary(){
+  showSub('<div class="sp-top"><span class="sp-back" onclick="showScene(\'map\')">←</span><span class="sp-title">📚 藏书阁</span></div>'+
+  '<div class="sp-body"><div style="text-align:center;padding:20px 0;"><div style="font-size:64px;">📚</div>'+
+  '<p style="font-size:12px;color:#5a3a2a;margin:10px 0;">架上书籍琳琅满目。</p>'+
+  '<button class="btn" onclick="doRead()">📖 开始读书</button></div>'+
+  '<div class="ac"><div class="ci">📖</div><div class="ct" id="acTxt">选一本书来读...</div></div></div>');
+}
+function doRead(){
+  const bs=[{t:'《江湖异闻录》 修为+20',c:20},{t:'《内功要义》 修为+25',c:25},{t:'《剑术心得》 修为+30',c:30},{t:'《草药图鉴》 修为+15',c:15},{t:'《天道感应篇》 修为+40',c:40}];
+  const b=bs[Math.floor(Math.random()*bs.length)];
+  G.cult+=b.c;G.power+=Math.floor(b.c*0.2);G.days++;
+  document.getElementById('acTxt').textContent=b.t;sv();
+}
+
+// 出师
+function renderGraduate(){
+  const total=(G.awakenedFates?.length||0)+(G.innateFates?.length||0);
+  const can=G.power>=5000 && total>=6;
+  showSub('<div class="sp-top"><span class="sp-back" onclick="showScene(\'map\')">←</span><span class="sp-title">🚪 山门</span></div>'+
+  '<div class="sp-body"><div style="text-align:center;padding:20px 0;"><div style="font-size:64px;">🚪</div>'+
+  '<p style="font-size:12px;color:#5a3a2a;margin:10px 0;">山门外就是广阔的江湖。</p>'+
+  '<p style="font-size:11px;color:#8b6914;">功力 '+fm(G.power)+'/5000 | 命格 '+total+'/6</p>'+
+  (can?'<button class="btn" onclick="doGraduate()" style="margin-top:12px;">🎓 出师！</button>':'<p style="font-size:11px;color:#a08060;margin-top:12px;">还需修炼...</p>')+
+  '</div></div>');
+}
+function doGraduate(){G.graduate=true;sv();showModal('🎓 出师！','你终于出师了！更多江湖内容开发中...');}
+
+// 命格检测
+function checkFates(){
+  if(!G.awakenedFates)G.awakenedFates=[];
+  if(G.days>=100 && !G.awakenedFates.includes('tdcq')){
+    let p=1;if(G.innateFates.some(f=>f.id==='ft'||f.id==='pa'))p=2;
+    if(Math.random()<p){G.awakenedFates.push('tdcq');showModal('🏆 命格觉醒','【天道酬勤】<br>全修炼速度+20%');}
+  }
+  sv();
+}
+
+function showModal(t,m){
+  const ov=document.createElement('div');ov.className='modal-overlay';
+  ov.innerHTML='<div class="modal"><h3>'+t+'</h3><p>'+m+'</p><button class="modal-btn" onclick="this.closest(\'.modal-overlay\').remove()">知道了</button></div>';
+  document.body.appendChild(ov);
+}
+
+// 启动
+window.onload = function(){ init(); };
+
+</script>
 </body>
 </html>
