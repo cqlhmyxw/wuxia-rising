@@ -290,11 +290,20 @@ function openPlace(place){
     else if(place === '后山'){
         html = `<span class="pback" onclick="closeP()">← 返回</span>
         <div class="ptitle">🌲 后山</div>
-        <p style="text-align:center;color:#5a3a2a;font-size:13px;margin-bottom:10px;">山林幽深，或许藏着什么机缘。</p>
+        <p style="text-align:center;color:#5a3a2a;font-size:13px;margin-bottom:10px;">山林幽深，分三个区域，越深入越危险。</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;">
+            <button class="act-btn" style="font-size:11px;padding:6px;" onclick="enterArea('外围')">🌳 外围</button>
+            <button class="act-btn" style="font-size:11px;padding:6px;" onclick="enterArea('深处')">🌲 深处</button>
+            <button class="act-btn" style="font-size:11px;padding:6px;background:#8b2500;" onclick="enterArea('险地')">⛰️ 险地</button>
+        </div>
         <div class="act-area">
             <div class="act-circle" id="ac">🌲</div>
-            <div class="act-text" id="at">山林静谧，不知道今天会遇见什么...</div>
-            <button class="act-btn" onclick="doExplore()">🌲 进山探索</button>
+            <div class="act-text" id="at" style="font-size:12px;">选择一个区域进入...</div>
+            <div style="display:flex;gap:4px;margin-top:6px;">
+                <button class="act-btn" id="atkBtn" style="display:none;font-size:11px;padding:6px;flex:1;" onclick="doBattle('attack')">⚔️ 攻击</button>
+                <button class="act-btn" id="defBtn" style="display:none;font-size:11px;padding:6px;flex:1;background:#5a7a3a;" onclick="doBattle('defend')">🛡️ 防御</button>
+                <button class="act-btn" id="runBtn" style="display:none;font-size:11px;padding:6px;flex:1;background:#a08060;" onclick="leaveBattle()">🏃 逃跑</button>
+            </div>
         </div>`;
     }
     else if(place === '藏书阁'){
@@ -533,7 +542,123 @@ function checkOffline(){
     }
 }
 
-// ==================== 其他行动 ====================
+// ==================== 后山战斗系统 ====================
+
+// 怪物数据
+const MONSTERS = {
+    '外围': [
+        {name:'野狼', ico:'🐺', hp:30, atk:5, drop:'兽皮', dropRate:0.3, expG:8},
+        {name:'野猪', ico:'🐗', hp:50, atk:7, drop:'獠牙', dropRate:0.2, expG:12},
+    ],
+    '深处': [
+        {name:'毒蛇', ico:'🐍', hp:40, atk:9, drop:'蛇胆', dropRate:0.25, expG:15},
+        {name:'山贼', ico:'🗡️', hp:70, atk:12, drop:'碎银', dropRate:0.4, expG:20},
+        {name:'猛虎', ico:'🐯', hp:100, atk:15, drop:'虎骨', dropRate:0.15, expG:30},
+    ],
+    '险地': [
+        {name:'黑熊', ico:'🐻', hp:150, atk:18, drop:'熊胆', dropRate:0.2, expG:40},
+        {name:'山魈', ico:'👺', hp:80, atk:22, drop:'精魄', dropRate:0.1, expG:50},
+        {name:'独眼巨蟒', ico:'🐉', hp:200, atk:25, drop:'蛇珠', dropRate:0.05, expG:80},
+    ]
+};
+
+let currentMonster = null;
+let inBattle = false;
+
+function enterArea(area){
+    const mPool = MONSTERS[area];
+    currentMonster = {...mPool[Math.floor(Math.random()*mPool.length)]};
+    currentMonster.maxHp = currentMonster.hp;
+    inBattle = true;
+    
+    document.getElementById('at').innerHTML = 
+        `你进入了【${area}】，遇到一只${currentMonster.ico}${currentMonster.name}！<br>` +
+        `<span style="font-size:11px;color:#8b2500;">${currentMonster.name} HP:${currentMonster.hp}/${currentMonster.maxHp} 攻击:${currentMonster.atk}</span>`;
+    document.getElementById('ac').textContent = currentMonster.ico;
+    document.getElementById('atkBtn').style.display = 'inline-block';
+    document.getElementById('defBtn').style.display = 'inline-block';
+    document.getElementById('runBtn').style.display = 'inline-block';
+    // 隐藏探索按钮
+}
+
+function doBattle(action){
+    if(!inBattle || !currentMonster) return;
+    
+    // 玩家攻击力 = 基础 + 功力加成
+    const playerAtk = 5 + Math.floor(G.power / 100);
+    // 防守加成
+    const defBonus = action === 'defend' ? 2.0 : 1.0;
+    
+    // 玩家攻击
+    let dmg = Math.floor((playerAtk + Math.random() * playerAtk) / defBonus);
+    currentMonster.hp -= dmg;
+    if(currentMonster.hp < 0) currentMonster.hp = 0;
+    
+    let log = `⚔️ 你对${currentMonster.ico}${currentMonster.name}造成了${dmg}点伤害！`;
+    
+    if(currentMonster.hp > 0){
+        // 怪物反击
+        let monsterDmg = Math.floor(currentMonster.atk * (0.5 + Math.random() * 0.5));
+        if(action === 'defend') monsterDmg = Math.floor(monsterDmg * 0.3);
+        G.power -= monsterDmg;
+        if(G.power < 0) G.power = 0;
+        log += `<br>${currentMonster.ico}${currentMonster.name}反击造成${monsterDmg}点伤害！`;
+        log += `<br><span style="font-size:11px;color:#8b2500;">${currentMonster.name} HP:${currentMonster.hp}/${currentMonster.maxHp}</span>`;
+        log += `<br><span style="font-size:11px;color:#2c1810;">你的功力:${G.power}</span>`;
+    } else {
+        // 击杀奖励
+        const exp = currentMonster.expG;
+        G.power += exp;
+        G.cult += Math.floor(exp * 0.5);
+        G.days++;
+        G.acts++;
+        G.actLog.push('杀怪');
+        addLog(`⚔️ 击杀${currentMonster.name} 功力+${exp} 修为+${Math.floor(exp*0.5)}`);
+        
+        // 掉落检测
+        let dropMsg = '';
+        if(Math.random() < currentMonster.dropRate){
+            dropMsg = `<br>🎁 掉落：${currentMonster.drop}`;
+            G.cult += exp * 0.3;
+        }
+        
+        log += `<br>💀 ${currentMonster.name}倒下了！功力+${exp}${dropMsg}`;
+        inBattle = false;
+        currentMonster = null;
+        document.getElementById('atkBtn').style.display = 'none';
+        document.getElementById('defBtn').style.display = 'none';
+        document.getElementById('runBtn').style.display = 'none';
+    }
+    
+    const td = document.getElementById('at');
+    td.innerHTML = log;
+    save();
+}
+
+function leaveBattle(){
+    if(!inBattle) return;
+    addLog(`🏃 从${currentMonster.name}面前逃走了`);
+    inBattle = false;
+    currentMonster = null;
+    document.getElementById('at').innerHTML = '你匆匆逃出了后山...';
+    document.getElementById('ac').textContent = '😰';
+    document.getElementById('atkBtn').style.display = 'none';
+    document.getElementById('defBtn').style.display = 'none';
+    document.getElementById('runBtn').style.display = 'none';
+    G.days++;
+    save();
+}
+
+// 出师
+function doGraduate(){
+    showModal('🎓 出师！', 
+        '你在小山谷中修炼已久，终于达到了出师的标准。<br>' +
+        '功力：' + fmt(G.power) + '<br>' +
+        '修炼天数：' + G.days + '日<br><br>' +
+        '<span style="color:#8b2500;">山门之外，更大的江湖在等着你...</span><br><br>' +
+        '<span style="font-size:11px;color:#a08060;">（大地图系统正在开发中，敬请期待）</span>');
+    addLog('🎓 出师！功力' + fmt(G.power) + '，历经' + G.days + '日，正式踏入江湖！');
+}
 function doAct(type){
     if(type==='打坐'){
         const g = Math.floor(8+rnd(0,10)+G.days*0.1);
