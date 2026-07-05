@@ -6,676 +6,390 @@
 <title>武侠·崛起</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:#1a120e;color:#e8d5b0;font-family:'KaiTi','STKaiti','SimSun',serif;height:100vh;overflow:hidden;}
-#app{width:100%;height:100%;max-width:480px;margin:0 auto;position:relative;overflow:hidden;}
-
-/* 主场景(山谷) — 古风2D地图 */
-#mainScene{
-    width:100%;height:100%;position:absolute;top:0;left:0;
-    background:linear-gradient(180deg,#f5e6c8 0%,#e8d5b0 50%,#d4c5a9 100%);
-}
-#mainScene .sky{position:absolute;top:0;left:0;width:100%;height:40%;background:linear-gradient(180deg,#87CEEB20,#f5e6c8);}
-#mainScene .mountains{position:absolute;top:8%;left:0;width:100%;height:20%;}
-#mainScene .ground{position:absolute;bottom:0;left:0;width:100%;height:35%;background:linear-gradient(0deg,#5a7a3a40,#7a9a5a20);border-radius:50% 50% 0 0;}
-#mainScene .ground::before{content:'';position:absolute;bottom:0;left:0;width:100%;height:60%;background:linear-gradient(0deg,#3a5a2a30,transparent);}
-#mainScene .title{position:absolute;top:4px;left:0;width:100%;text-align:center;font-size:13px;color:#8b6914;letter-spacing:4px;z-index:3;}
-#mainScene .stats{position:absolute;top:22px;left:10px;right:10px;font-size:9px;color:#a08060;z-index:3;display:flex;justify-content:center;gap:8px;}
-
-/* 主角形象 */
-#player{
-    position:absolute;bottom:30%;left:50%;transform:translateX(-50%);z-index:5;
-    text-align:center;filter:drop-shadow(0 4px 4px rgba(0,0,0,0.2));
-    font-size:14px;
-}
-#player .body{font-size:48px;display:block;}
-#player .weapon{font-size:24px;display:block;margin-top:-8px;}
-
-/* 地点入口(分布在地图上) */
-.spot{
-    position:absolute;z-index:4;cursor:pointer;text-align:center;
-    transition:0.12s;background:rgba(255,248,239,0.88);border-radius:8px;
-    padding:4px 10px;border:1px solid rgba(139,37,0,0.12);
-    min-width:56px;box-shadow:0 1px 3px rgba(0,0,0,0.08);
-}
-.spot:active{transform:scale(0.88);}
-.spot .ico{font-size:22px;display:block;}
-.spot .nm{font-size:9px;color:#5a3a2a;white-space:nowrap;}
-
-/* 子页面(全屏覆盖) */
-#subPage{
-    display:none;position:absolute;top:0;left:0;width:100%;height:100%;
-    background:#f5e6c8;z-index:10;overflow-y:auto;
-    animation:pageIn 0.2s ease;
-}
-#subPage.show{display:block;}
-@keyframes pageIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.sp-top{
-    display:flex;align-items:center;padding:12px;border-bottom:1px solid #d4a574;
-    background:#f5e6c8;position:sticky;top:0;z-index:1;min-height:48px;
-}
-.sp-back{font-size:16px;cursor:pointer;color:#8b2500;margin-right:12px;flex-shrink:0;}
-.sp-title{font-size:15px;font-weight:700;color:#2c1810;}
-.sp-body{padding:10px 12px;}
-
-/* 武功卡片 */
-.sg2{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-.sc{
-    background:#fff8ef;border:1px solid #d4c5a9;border-radius:6px;
-    padding:8px 6px;text-align:center;cursor:pointer;transition:0.1s;
-}
-.sc:active{transform:scale(0.95);}
-.sc .sn{font-size:12px;color:#2c1810;font-weight:700;}
-.sc .stp{font-size:9px;color:#8b6914;}
-.sc .slv{font-size:9px;color:#5a3a2a;margin-top:2px;}
-.sc .sbar{width:100%;height:3px;background:#d4c5a9;border-radius:2px;margin-top:3px;overflow:hidden;}
-.sc .sfill{height:100%;background:#8b2500;transition:width .3s;}
-.sc.active{border-color:#8b2500;background:#efe0bc;}
-
-/* 后山区域卡片 */
-.area-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-.area-card{border-radius:8px;padding:14px 8px;text-align:center;cursor:pointer;transition:0.15s;}
-.area-card:active{transform:scale(0.95);}
-.area-card .ico{font-size:32px;}
-
-/* 战斗界面 */
-.bf{text-align:center;padding:10px 0;}
-.bf .mi{font-size:64px;}
-.bf .hi{font-size:12px;color:#8b2500;margin:6px 0;}
-.bf .hb{width:100%;height:6px;background:#d4c5a9;border-radius:3px;overflow:hidden;margin:6px 0;}
-.bf .hf{height:100%;background:#c0392b;transition:width .3s;}
-.bf .bb{display:flex;gap:6px;margin-top:10px;}
-.bf .bb button{flex:1;padding:10px;border:none;border-radius:6px;font-size:13px;font-family:inherit;cursor:pointer;transition:0.1s;}
-.bf .bb button:active{transform:scale(0.95);}
-.b1{background:#c0392b;color:#fff;}
-.b2{background:#5a7a3a;color:#fff;}
-.b3{background:#a08060;color:#fff;}
-
-/* 行动区 */
-.ac{text-align:center;padding:10px 0;}
-.ac .ci{font-size:40px;margin-bottom:6px;}
-.ac .ct{font-size:12px;color:#5a3a2a;min-height:28px;}
-
-/* 通用 */
-.btn{display:inline-block;background:#8b2500;color:#fff;border:none;border-radius:6px;
-    padding:9px 22px;font-size:13px;font-family:inherit;cursor:pointer;transition:0.1s;letter-spacing:1px;}
-.btn:active{transform:scale(0.95);}
-.btn.g{background:#5a7a3a;}
-.btn-row{display:flex;gap:8px;justify-content:center;padding:6px 0;}
-.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;z-index:50;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;}
-.modal{background:#fff8ef;border:3px solid #8b2500;border-radius:12px;padding:24px;max-width:300px;width:90%;text-align:center;}
-.modal h3{font-size:16px;color:#2c1810;margin-bottom:8px;}
-.modal p{font-size:12px;color:#5a3a2a;line-height:1.6;}
+body{background:#1a120e;overflow:hidden;display:flex;justify-content:center;align-items:center;height:100vh;}
+canvas{display:block;background:#f5e6c8;border-radius:8px;box-shadow:0 0 30px rgba(0,0,0,0.5);}
+#ui-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;display:flex;justify-content:center;align-items:center;}
 </style>
 </head>
 <body>
-<div id="app"></div>
+<canvas id="gc"></canvas>
 <script>
+const W = 480, H = 720;
+const canvas = document.getElementById('gc');
+canvas.width = W; canvas.height = H;
+const ctx = canvas.getContext('2d');
+
 // ===== 数据 =====
-const SKILLS = [
-  {id:'f1',name:'基础拳法',type:'拳掌',desc:'入门拳脚',pow:10,spd:10,expPer:5,ico:'👊'},
-  {id:'f2',name:'太极拳',type:'拳掌',desc:'以柔克刚',pow:30,spd:8,expPer:4,ico:'☯️'},
-  {id:'f3',name:'降龙十八掌',type:'拳掌',desc:'至刚至阳',pow:80,spd:4,expPer:3,ico:'🐉'},
-  {id:'j1',name:'基础剑法',type:'剑法',desc:'剑术入门',pow:12,spd:12,expPer:5,ico:'⚔️'},
-  {id:'j2',name:'独孤九剑',type:'剑法',desc:'破尽天下',pow:70,spd:15,expPer:3,ico:'🗡️'},
-  {id:'j3',name:'玄铁剑法',type:'剑法',desc:'重剑无锋',pow:90,spd:3,expPer:2,ico:'⚫'},
-  {id:'d1',name:'基础刀法',type:'刀法',desc:'刀术入门',pow:14,spd:10,expPer:5,ico:'🔪'},
-  {id:'d2',name:'胡家刀法',type:'刀法',desc:'快准狠',pow:55,spd:12,expPer:3,ico:'🗡️'},
-  {id:'d3',name:'青龙刀法',type:'刀法',desc:'威猛',pow:75,spd:5,expPer:2,ico:'🐉'},
-  {id:'n1',name:'吐纳心法',type:'内功',desc:'调息养气',pow:0,spd:0,expPer:6,ico:'🧘'},
-  {id:'n2',name:'易筋经',type:'内功',desc:'少林内功',pow:0,spd:0,expPer:3,ico:'📿'},
-  {id:'n3',name:'九阳神功',type:'内功',desc:'内力生生不息',pow:0,spd:0,expPer:2,ico:'☀️'},
-  {id:'q1',name:'基础轻功',type:'轻功',desc:'身法入门',pow:0,spd:0,expPer:6,ico:'🏃'},
-  {id:'q2',name:'梯云纵',type:'轻功',desc:'武当轻功',pow:0,spd:0,expPer:4,ico:'☁️'},
-  {id:'q3',name:'凌波微步',type:'轻功',desc:'逍遥游',pow:0,spd:0,expPer:2,ico:'🌊'},
-];
 const LV = ['初学乍练','粗通皮毛','略有小成','驾轻就熟','融会贯通','炉火纯青','登峰造极','出神入化','超凡入圣','返璞归真'];
 const MAX_EXP = 5000;
-const MONSTERS = {
-  '外围':[{n:'野狼',i:'🐺',hp:30,atk:5,drp:'兽皮',dr:0.3,exp:8},{n:'野猪',i:'🐗',hp:50,atk:7,drp:'獠牙',dr:0.2,exp:12}],
-  '深处':[{n:'毒蛇',i:'🐍',hp:40,atk:9,drp:'蛇胆',dr:0.25,exp:15},{n:'山贼',i:'🗡️',hp:70,atk:12,drp:'碎银',dr:0.4,exp:20},{n:'猛虎',i:'🐯',hp:100,atk:15,drp:'虎骨',dr:0.15,exp:30}],
-  '险地':[{n:'黑熊',i:'🐻',hp:150,atk:18,drp:'熊胆',dr:0.2,exp:40},{n:'山魈',i:'👺',hp:80,atk:22,drp:'精魄',dr:0.1,exp:50},{n:'巨蟒',i:'🐉',hp:200,atk:25,drp:'蛇珠',dr:0.05,exp:80}],
-};
-const PRACTICE_EVENTS = [
-  {n:'正常修炼',p:0.70,m:1.0,msg:'你专注地练习着...'},
-  {n:'灵光乍现',p:0.15,m:3.0,msg:'💡 灵光一闪！'},
-  {n:'融会贯通',p:0.08,m:5.0,msg:'✨ 豁然开朗！'},
-  {n:'天人感应',p:0.05,m:8.0,msg:'🌌 天人合一！'},
-  {n:'顿悟',p:0.015,m:15.0,msg:'🌟 大彻大悟！'},
-  {n:'天道酬勤',p:0.005,m:30.0,msg:'☀️ 天道酬勤！'},
+const SKILLS = [
+  {id:'f1',name:'基础拳法',pow:10,expPer:5,ico:'👊'},
+  {id:'f2',name:'太极拳',pow:30,expPer:4,ico:'☯️'},
+  {id:'f3',name:'降龙十八掌',pow:80,expPer:3,ico:'🐉'},
+  {id:'j1',name:'基础剑法',pow:12,expPer:5,ico:'⚔️'},
+  {id:'j2',name:'独孤九剑',pow:70,expPer:3,ico:'🗡️'},
+  {id:'j3',name:'玄铁剑法',pow:90,expPer:2,ico:'⚫'},
 ];
-const FATES = [
-  {id:'tl',n:'天灵根',r:'S',w:1,desc:'修炼+50%'},{id:'hd',n:'混沌之体',r:'S',w:1,desc:'全系兼修'},
-  {id:'jw',n:'绝世悟性',r:'S',w:1,desc:'突破+30%'},{id:'tsl',n:'天生神力',r:'A',w:5,desc:'攻击+20%'},
-  {id:'fx',n:'福星高照',r:'A',w:5,desc:'奇遇+50%'},{id:'bd',n:'百毒不侵',r:'A',w:5,desc:'毒抗+80%'},
-  {id:'gj',n:'钢筋铁骨',r:'B',w:15,desc:'防御+20%'},{id:'sx',n:'神行百变',r:'B',w:15,desc:'闪避+15%'},
-  {id:'gm',n:'过目不忘',r:'B',w:15,desc:'读书+30%'},{id:'ts',n:'天煞孤星',r:'B',w:15,desc:'独修+30%'},
-  {id:'cy',n:'财运亨通',r:'C',w:30,desc:'银两+30%'},{id:'lc',n:'灵蝉之息',r:'C',w:30,desc:'内恢+25%'},
-  {id:'tm',n:'天生魅骨',r:'C',w:30,desc:'好感+50%'},{id:'ft',n:'凡体',r:'D',w:49,desc:'后天×2'},
-  {id:'pa',n:'平平安安',r:'D',w:49,desc:'免负面×2'},
-];
-const STAR = {S:'⭐⭐⭐⭐★',A:'⭐⭐⭐',B:'⭐⭐',C:'⭐',D:''};
-const C_RAR = {S:'#c0392b',A:'#d4a574',B:'#8b6914',C:'#5a7a3a',D:'#808080'};
+const PRACTICE_EVENTS = [{n:'正常',p:0.7,m:1},{n:'灵光',p:0.15,m:3},{n:'贯通',p:0.08,m:5},{n:'顿悟',p:0.015,m:15}];
+const FATES = [{id:'tl',n:'天灵根',r:'S',w:1,desc:'修炼+50%'},{id:'hd',n:'混沌之体',r:'S',w:1,desc:'全系兼修'},{id:'jw',n:'绝世悟性',r:'S',w:1,desc:'突破+30%'},{id:'ft',n:'凡体',r:'D',w:49,desc:'后天×2'}];
+const C_RAR={S:'#c0392b',A:'#d4a574',B:'#8b6914',C:'#5a7a3a',D:'#808080'};
 
 // ===== 游戏状态 =====
 let G = {};
-let curScene = 'map'; let curSkill = null; let curMon = null; let inBattle = false; let autoT = null;
+let scene = 'map'; // map, house, practice, backhill
+let curSkill = null;
+let curMon = null;
+let inBattle = false;
+let animFrame = 0;
+let particles = [];
+let monsters = [];
+let shakeTimer = 0;
 
-function defG(){return{
-  name:'无名',innateFates:[],awakenedFates:[],power:0,cult:0,days:1,acts:0,
-  skills:[],log:['你来到了小山谷...'],actLog:[],bag:[],killed:0,lastSave:0,
-  hasFate:false
-};}
-function ld(){try{let s=localStorage.getItem('wx');if(s)return JSON.parse(s)}catch(e){}return defG();}
-function sv(){G.lastSave=Date.now();try{localStorage.setItem('wx',JSON.stringify(G))}catch(e){}}
-function fm(n){return n>=10000?(n/10000).toFixed(1)+'万':Math.floor(n)}
+function ld(){try{let s=localStorage.getItem('wx2');if(s)return JSON.parse(s)}catch(e){}return {p:0,c:0,d:1,sp:[],ik:[],f:[],y:0,log:[]};}
+function sv(){try{localStorage.setItem('wx2',JSON.stringify(G))}catch(e){}}
 function rn(a,b){return a+Math.random()*(b-a)}
-function drF(){let p=[];FATES.forEach(f=>{for(let i=0;i<f.w;i++)p.push(f)});return p[Math.floor(Math.random()*p.length)]}
 
-// ===== 场景切换 =====
-function showScene(sc){
-  curScene = sc;
-  document.getElementById('subPage').classList.remove('show');
-  document.getElementById('subPage').style.display = 'none';
-  switch(sc){
-    case 'map': renderMap(); break;
-    case 'house': renderHouse(); break;
-    case 'practice': renderPractice(); break;
-    case 'fish': renderFish(); break;
-    case 'backhill': renderBackHill(); break;
-    case 'library': renderLibrary(); break;
-    case 'graduate': renderGraduate(); break;
-    case 'battle': renderBattle(); break;
+// ===== Canvas 2D 渲染 =====
+
+// 绘制古风山谷地图背景
+function drawMapBG(){
+  // 天空渐变
+  let grad = ctx.createLinearGradient(0,0,0,H*0.5);
+  grad.addColorStop(0,'#87CEEB');
+  grad.addColorStop(0.5,'#E8F4F8');
+  grad.addColorStop(1,'#f5e6c8');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H*0.5);
+  
+  // 远山
+  ctx.fillStyle = '#c5a680';
+  ctx.beginPath();
+  ctx.moveTo(0,H*0.35);
+  for(let x=0;x<=W;x+=40){
+    ctx.lineTo(x,H*0.35-Math.sin(x*0.03)*30-Math.sin(x*0.01)*20);
+  }
+  ctx.lineTo(W,H*0.45);
+  ctx.lineTo(0,H*0.45);
+  ctx.closePath();
+  ctx.fill();
+  
+  // 近山
+  ctx.fillStyle = '#a08060';
+  ctx.beginPath();
+  ctx.moveTo(0,H*0.42);
+  for(let x=0;x<=W;x+=30){
+    ctx.lineTo(x,H*0.42-Math.sin(x*0.02+1)*25-Math.sin(x*0.008+2)*15);
+  }
+  ctx.lineTo(W,H*0.5);
+  ctx.lineTo(0,H*0.5);
+  ctx.closePath();
+  ctx.fill();
+  
+  // 地面
+  grad = ctx.createLinearGradient(0,H*0.5,0,H);
+  grad.addColorStop(0,'#9ac791');
+  grad.addColorStop(0.3,'#7a9a5a');
+  grad.addColorStop(0.6,'#5a7a3a');
+  grad.addColorStop(1,'#3a5a2a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,H*0.5,W,H*0.5);
+  
+  // 小路
+  ctx.fillStyle = '#c5a680';
+  ctx.beginPath();
+  ctx.moveTo(W*0.5,H);
+  ctx.quadraticCurveTo(W*0.45,H*0.7,W*0.5,H*0.55);
+  ctx.quadraticCurveTo(W*0.55,H*0.45,W*0.5,H*0.4);
+  ctx.lineTo(W*0.5+20,H*0.4);
+  ctx.lineTo(W*0.5+15,H);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// 绘制主角（持剑侠客）
+function drawPlayer(x,y,scale=1){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.scale(scale,scale);
+  
+  // 身体（青衫）
+  ctx.fillStyle = '#3a6a4a';
+  ctx.fillRect(-12,-25,24,30);
+  
+  // 头
+  ctx.fillStyle = '#f0d8a0';
+  ctx.beginPath();
+  ctx.arc(0,-28,12,0,Math.PI*2);
+  ctx.fill();
+  
+  // 头发（束发）
+  ctx.fillStyle = '#2c1810';
+  ctx.beginPath();
+  ctx.arc(0,-32,10,0,Math.PI*2);
+  ctx.fill();
+  
+  // 发髻
+  ctx.fillRect(-3,-42,6,10);
+  
+  // 剑（右手）
+  ctx.strokeStyle = '#c0c0c0';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(14,-20);
+  ctx.lineTo(14+20*Math.sin(animFrame*0.05),-20+20*Math.cos(animFrame*0.05));
+  ctx.stroke();
+  
+  // 剑柄
+  ctx.fillStyle = '#8b6914';
+  ctx.fillRect(10,-22,8,5);
+  
+  // 腰带
+  ctx.fillStyle = '#8b2500';
+  ctx.fillRect(-12,-6,24,3);
+  
+  ctx.restore();
+}
+
+// 绘制建筑（茅屋）
+function drawHouse(x,y){
+  // 屋顶
+  ctx.fillStyle = '#8b6914';
+  ctx.beginPath();
+  ctx.moveTo(x-30,y);
+  ctx.lineTo(x,y-25);
+  ctx.lineTo(x+30,y);
+  ctx.closePath();
+  ctx.fill();
+  
+  // 墙体
+  ctx.fillStyle = '#d4c5a9';
+  ctx.fillRect(x-25,y-2,50,40);
+  
+  // 门
+  ctx.fillStyle = '#5a3a2a';
+  ctx.fillRect(x-8,y+8,16,30);
+  
+  // 窗
+  ctx.fillStyle = '#87CEEB';
+  ctx.fillRect(x-20,y+5,12,12);
+  ctx.fillRect(x+8,y+5,12,12);
+}
+
+// 绘制练功桩
+function drawPole(x,y){
+  ctx.fillStyle = '#5a3a2a';
+  ctx.fillRect(x-5,y-20,10,40);
+  ctx.fillRect(x-15,y-20,30,5);
+  ctx.fillRect(x-15,y-8,30,3);
+}
+
+// ===== 怪物绘制 =====
+function drawMonster(x,y,type){
+  const monsters = {
+    '野狼':()=>{
+      ctx.fillStyle = '#808080';
+      ctx.beginPath();
+      ctx.ellipse(x,y,25,15,0,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#666';
+      ctx.beginPath();
+      ctx.arc(x-15,y-8,8,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#c0392b';
+      ctx.beginPath();
+      ctx.arc(x-20,y-12,3,0,Math.PI*2);
+      ctx.fill();
+    },
+    '猛虎':()=>{
+      ctx.fillStyle = '#d4a574';
+      ctx.beginPath();
+      ctx.ellipse(x,y,35,20,0,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#8b6914';
+      for(let i=-20;i<=20;i+=12){
+        ctx.fillRect(x+i,y-5,6,3);
+      }
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(x-20,y-10,8,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#c0392b';
+      ctx.beginPath();
+      ctx.arc(x-24,y-14,3,0,Math.PI*2);
+      ctx.fill();
+    },
+    '黑熊':()=>{
+      ctx.fillStyle = '#3a2218';
+      ctx.beginPath();
+      ctx.ellipse(x,y,30,22,0,0,Math.PI*2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x-10,y-15,12,0,Math.PI*2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x+10,y-15,12,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#8b6914';
+      ctx.beginPath();
+      ctx.arc(x-12,y-18,4,0,Math.PI*2);
+      ctx.fill();
+    },
+  };
+  if(monsters[type]) monsters[type]();
+}
+
+// ===== 粒子特效 =====
+function addParticles(x,y,count,color){
+  for(let i=0;i<count;i++){
+    particles.push({
+      x,y,vx:rn(-3,3),vy:rn(-5,-1),life:rn(20,40),maxLife:40,color,
+    });
   }
 }
 
-function showSub(html){
-  const sp = document.getElementById('subPage');
-  sp.innerHTML = html;
-  sp.style.display = 'block';
-  setTimeout(()=>sp.classList.add('show'),10);
+function updateParticles(){
+  particles = particles.filter(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.life--;
+    return p.life>0;
+  });
+  particles.forEach(p=>{
+    ctx.globalAlpha = p.life/p.maxLife;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,3*(p.life/p.maxLife),0,Math.PI*2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
 }
 
-// ===== 主地图(山谷) =====
-function renderMap(){
-  G = ld();
-  const fateStr = G.innateFates.map(f=>`<span style="color:${C_RAR[f.rar]||'#888'}">${STAR[f.rar]||''}${f.name||'?'}</span>`).join('');
-  const app = document.getElementById('app');
-  app.innerHTML = `
-  <div id="mainScene">
-    <div class="sky"></div>
-    <svg class="mountains" viewBox="0 0 480 120">
-      <path d="M0,120 L60,20 L120,60 L180,0 L240,40 L300,10 L360,50 L420,30 L480,70 L480,120 Z" fill="#c5a68040"/>
-      <path d="M0,120 L40,50 L100,30 L160,60 L220,15 L280,45 L340,25 L400,55 L460,40 L480,80 L480,120 Z" fill="#a0806040"/>
-    </svg>
-    <div class="ground"></div>
-    <div class="title">🏔️ 小山谷 · 第${G.days}日</div>
-    <div class="stats">功力 ${fm(G.power)} 修为 ${fm(G.cult)} 命格${G.awakenedFates.length} ${fateStr}</div>
-    <div id="player"><span class="body">🧑</span><span class="weapon">⚔️</span></div>
-    ${renderSpots()}
-  </div>
-  <div id="subPage"></div>`;
+// ===== 场景绘制 =====
+function drawMapScene(){
+  drawMapBG();
+  
+  // 地点：茅屋（左上）
+  drawHouse(80,380);
+  ctx.fillStyle = '#2c1810';
+  ctx.font = '11px KaiTi';
+  ctx.textAlign = 'center';
+  ctx.fillText('🏠 小屋',80,420);
+  
+  // 练功场（右上）
+  for(let i=0;i<3;i++) drawPole(340+30*i,400);
+  ctx.fillText('🪵 练功场',370,430);
+  
+  // 钓鱼台（右下）
+  ctx.fillStyle = '#4a8ab5';
+  ctx.beginPath();
+  ctx.ellipse(120,500,40,15,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.fillText('🎣 钓鱼台',120,530);
+  
+  // 后山（左中）
+  ctx.fillStyle = '#3a6a2a';
+  ctx.beginPath();
+  ctx.moveTo(300,380);
+  ctx.lineTo(320,330);
+  ctx.lineTo(340,380);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillText('🌲 后山',320,370);
+  
+  // 主角站在中央
+  drawPlayer(W*0.5,H*0.65);
+  
+  // 主角名称
+  ctx.fillStyle = '#2c1810';
+  ctx.font = '12px KaiTi';
+  ctx.textAlign = 'center';
+  ctx.fillText('无名',W*0.5,H*0.65+40);
+  
+  // 状态信息
+  ctx.fillStyle = '#5a3a2a';
+  ctx.font = '11px KaiTi';
+  ctx.fillText('功力:'+G.p+' 修为:'+G.c+' 第'+G.d+'日',W*0.5,30);
+  
+  updateParticles();
+  
+  // 提示
+  ctx.fillStyle = '#a08060';
+  ctx.font = '10px KaiTi';
+  ctx.fillText('点击场景文字进入',W*0.5,H-10);
 }
 
-function renderSpots(){
-  return [
-    {ico:'🏠',nm:'小屋',x:'8%',y:'52%',s:'house'},
-    {ico:'🪵',nm:'练功场',x:'35%',y:'48%',s:'practice'},
-    {ico:'🎣',nm:'钓鱼台',x:'70%',y:'55%',s:'fish'},
-    {ico:'🌲',nm:'后山',x:'55%',y:'62%',s:'backhill'},
-    {ico:'📚',nm:'藏书阁',x:'20%',y:'60%',s:'library'},
-    {ico:'🚪',nm:'出师',x:'85%',y:'48%',s:'graduate'},
-  ].map(t=>`<div class="spot" style="left:${t.x};top:${t.y};" onclick="showScene('${t.s}')"><span class="ico">${t.ico}</span><span class="nm">${t.nm}</span></div>`).join('');
+// ===== 主循环 =====
+function gameLoop(){
+  animFrame++;
+  ctx.clearRect(0,0,W,H);
+  
+  switch(scene){
+    case 'map':
+      drawMapScene();
+      break;
+    case 'backhill':
+      drawBackHill();
+      break;
+  }
+  
+  requestAnimationFrame(gameLoop);
 }
 
-// ===== 练功场场景 =====
-function renderPractice(){
-  if(!G.skills||G.skills.length===0) G.skills=SKILLS.map(s=>({id:s.id,exp:0,lv:0}));
-  curSkill=null;
-  let html=`<div class="sp-top"><span class="sp-back" onclick="showScene('map')">←</span><span class="sp-title">🪵 练功场</span></div>
-  <div class="sp-body"><div class="sg2">${SKILLS.map(s=>{
-    const gs=G.skills.find(x=>x.id===s.id)||{exp:0,lv:0};
-    const pct=Math.min(100,((gs.exp-gs.lv*500)/((gs.lv+1)*500-gs.lv*500))*100);
-    return `<div class="sc" onclick="pickSkill('${s.id}')"><div class="sn">${s.ico} ${s.name}</div>
-    <div class="stp">${s.type}·威力${s.pow}</div><div class="slv">${LV[gs.lv]}【${Math.floor(pct)}%】</div>
-    <div class="sbar"><div class="sfill" style="width:${pct}%"></div></div></div>`;
-  }).join('')}</div>
-  <div class="ac"><div class="ci" id="acIco">👊</div><div class="ct" id="acTxt">点击武功开始修炼...</div>
-  <div class="btn-row" style="margin-top:6px;">
-    <button class="btn" id="pbBtn" style="display:none" onclick="doPractice()">🖱️ 手动练功</button>
-    <button class="btn g" id="autoBtn" style="display:none" onclick="toggleAuto()">🤖 自动</button>
-  </div>
-  <div style="font-size:10px;color:#a08060;margin-top:4px;">手动收益更高，可触发顿悟！Lv.3后可自动</div></div></div>`;
-  showSub(html);
+// 后山场景
+function drawBackHill(){
+  // 背景
+  let grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'#2a4a1a');
+  grad.addColorStop(0.5,'#1a3a0a');
+  grad.addColorStop(1,'#0a1a00');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H);
+  
+  // 树
+  ctx.fillStyle = '#2a5a1a';
+  for(let i=0;i<5;i++){
+    ctx.beginPath();
+    ctx.arc(50+i*100,200,50,0,Math.PI*2);
+    ctx.fill();
+  }
+  
+  // 路径
+  ctx.fillStyle = '#3a4a2a';
+  ctx.fillRect(W*0.45,0,30,H);
+  
+  if(curMon && inBattle){
+    drawMonster(W*0.5,H*0.4,curMon.n);
+    
+    ctx.fillStyle = '#e8d5b0';
+    ctx.font = '13px KaiTi';
+    ctx.textAlign = 'center';
+    ctx.fillText(curMon.n+' HP:'+curMon.hp+'/'+curMon.mh,W*0.5,H*0.55);
+    
+    // HP条
+    ctx.fillStyle = '#333';
+    ctx.fillRect(W*0.3,H*0.58,W*0.4,8);
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(W*0.3,H*0.58,W*0.4*(curMon.hp/curMon.mh),8);
+  } else {
+    ctx.fillStyle = '#e8d5b0';
+    ctx.font = '14px KaiTi';
+    ctx.textAlign = 'center';
+    ctx.fillText('🌳 外围 🐺野狼 🐗野猪',W*0.5,H*0.3);
+    ctx.fillText('🌲 深处 🐍毒蛇 🗡️山贼 🐯猛虎',W*0.5,H*0.5);
+    ctx.fillText('⛰️险地 🐻黑熊 👺山魈 🐉巨蟒',W*0.5,H*0.7);
+    
+    ctx.fillStyle = '#a08060';
+    ctx.font = '11px KaiTi';
+    ctx.fillText('点击区域名称进入',W*0.5,H*0.85);
+  }
 }
-
-function pickSkill(id){
-  curSkill=id;
-  const s=SKILLS.find(x=>x.id===id);
-  document.getElementById('acIco').textContent=s.ico;
-  document.getElementById('acTxt').textContent=`准备练习【${s.name}】...`;
-  document.getElementById('pbBtn').style.display='inline-block';
-  const gs=G.skills.find(x=>x.id===id);
-  const canA=gs&&gs.lv>=3;
-  document.getElementById('autoBtn').style.display=canA?'inline-block':'none';
-  document.querySelectorAll('.sc').forEach(e=>e.classList.remove('active'));
-  const el=document.querySelector(`.sc[onclick*="${id}"]`);
-  if(el)el.classList.add('active');
-}
-
-function renderHouse(){
-  let p = document.getElementById('subPage');
-  p.innerHTML = `<div class="sp-top"><span class="sp-back" onclick="showScene('map')">←</span><span class="sp-title">🏠 小屋</span></div>
-  <div class="sp-body">
-    <div style="text-align:center;padding:20px 0;font-size:48px;">🧘</div>
-    <p style="text-align:center;font-size:12px;color:#5a3a2a;margin-bottom:14px;">竹篱茅舍，简朴温暖，是你修炼之余的安身之所。</p>
-    <div class="btn-row">
-      <button class="btn" onclick="doAct('打坐')">🧘 打坐</button>
-      <button class="btn g" onclick="doAct('休息')">😴 休息</button>
-    </div>
-    <div class="ac"><div class="ci" id="acIco">🧘</div><div class="ct" id="acTxt">选择要做的事...</div></div>
-  </div>`;
-  showSub(p.innerHTML);
 
 // ===== 初始化 =====
 function init(){
   G = ld();
-  // 检查是否存在存档，没有则显示命格抽选
-  if(!G.hasFate || G.innateFates.length===0){
-    showFateDraw();
-  } else {
-    renderMap();
-  }
-  sv();
-  setInterval(sv, 30000);
+  if(!G.p) G.p = 0;
+  gameLoop();
 }
 
-function showFateDraw(){
-  const fates = [];
-  for(let i=0;i<3;i++) fates.push(drF());
-  fates.sort((a,b)=>'SABCD'.indexOf(a.r)-'SABCD'.indexOf(b.r));
-  G.innateFates = fates;
-  G.hasFate = true;
-  
-  const app = document.getElementById('app');
-  app.innerHTML = `
-  <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5e6c8;padding:20px;">
-    <div style="background:#fff8ef;border:3px solid #8b2500;border-radius:12px;padding:24px;max-width:320px;width:100%;text-align:center;">
-      <div style="font-size:32px;margin-bottom:12px;">🔮</div>
-      <h2 style="color:#2c1810;margin-bottom:16px;">你的天命</h2>
-      ${fates.map(f=>`<div style="margin:8px 0;padding:10px;border:1px solid ${C_RAR[f.r]};border-radius:6px;">
-        <span style="color:${C_RAR[f.r]};font-size:14px;">${STAR[f.r]}</span>
-        <span style="font-size:16px;font-weight:700;color:#2c1810;">${f.n||f.name}</span>
-        <p style="font-size:11px;color:#5a3a2a;margin-top:4px;">${f.desc}</p>
-      </div>`).join('')}
-      <button class="btn" onclick="renderMap()" style="margin-top:12px;">踏入江湖</button>
-    </div>
-  </div>`;
-  sv();
-}
-
-// ===== 小屋行动 =====
-function doAct(type){
-  if(type==='打坐'){
-    const g = Math.floor(8+rn(0,10)+G.days*0.1);
-    G.cult+=g; G.power+=Math.floor(g*0.3);
-    G.days++; G.acts++; G.actLog.push('打坐');
-    document.getElementById('acIco').textContent='🧘';
-    document.getElementById('acTxt').textContent=`盘膝而坐，内力流转... 修为+${g}`;
-  } else {
-    G.days++; G.actLog.push('休息');
-    document.getElementById('acIco').textContent='😴';
-    document.getElementById('acTxt').textContent='美美地睡了一觉，神清气爽。';
-  }
-  sv();
-}
-
-// ===== 练功 =====
-function doPractice(){
-  if(!curSkill){
-    document.getElementById('acTxt').innerHTML='⚠️ 请先选择一门武功！';
-    return;
-  }
-  const s = SKILLS.find(x=>x.id===curSkill);
-  let gs = G.skills.find(x=>x.id===curSkill);
-  if(!s||!gs) return;
-  if(gs.lv>=9&&gs.exp>=MAX_EXP){
-    document.getElementById('acTxt').textContent='此功已至化境，无需再练。'; return;
-  }
-  
-  let bonus = 1;
-  if(G.innateFates.some(f=>f.id==='tl')) bonus+=0.5;
-  if(G.innateFates.some(f=>f.id==='ts')) bonus+=0.3;
-  if(G.awakenedFates.includes('tdcq')) bonus+=0.2;
-  bonus *= 1.5;
-  
-  let mult=1, eventMsg='', r=Math.random(), cum=0;
-  for(const ev of PRACTICE_EVENTS){cum+=ev.p;if(r<cum){mult=ev.m;eventMsg=ev.msg;break;}}
-  
-  const gain = Math.floor(s.expPer * bonus * mult * rn(0.9,1.1));
-  gs.exp += gain;
-  while(gs.lv<9 && gs.exp>=(gs.lv+1)*500){
-    gs.lv++;
-    const lvB = 10+gs.lv*5;
-    G.power+=lvB; G.cult+=Math.floor(lvB*0.5);
-  }
-  G.power += Math.floor(gain*(s.pow/12||1));
-  G.cult += Math.floor(gain*0.3);
-  G.days++; G.acts++;
-  
-  document.getElementById('acTxt').innerHTML = eventMsg ? `${eventMsg}<br><span style="color:#8b2500;font-size:15px;font-weight:700;">熟练度 +${gain}（×${mult}）</span>` : `专注练习... 熟练度 +${gain}`;
-  
-  // 刷新卡片
-  const lvEl = document.querySelector(`.sc[onclick*="${curSkill}"] .slv`);
-  if(lvEl){
-    const pct=Math.floor(((gs.exp-gs.lv*500)/((gs.lv+1)*500-gs.lv*500))*100);
-    lvEl.textContent=`${LV[gs.lv]}【${pct}%】`;
-  }
-  const bar = document.querySelector(`.sc[onclick*="${curSkill}"] .sfill`);
-  if(bar) bar.style.width = Math.min(100,((gs.exp-gs.lv*500)/((gs.lv+1)*500-gs.lv*500))*100)+'%';
-  
-  checkFates(); sv();
-}
-
-// ===== 钓鱼 =====
-function renderFish(){
-  showSub(`<div class="sp-top"><span class="sp-back" onclick="showScene('map')">←</span><span class="sp-title">🎣 钓鱼台</span></div>
-  <div class="sp-body"><div style="text-align:center;padding:20px 0;"><div style="font-size:64px;">🎣</div>
-  <p style="font-size:12px;color:#5a3a2a;margin:10px 0;">碧波荡漾，垂柳依依。</p>
-  <button class="btn g" onclick="doFish()">🎣 开始钓鱼</button></div>
-  <div class="ac"><div class="ci">🎣</div><div class="ct" id="acTxt">水面平静...</div></div></div>`);
-}
-function doFish(){
-  const evts=[
-    {t:'钓到一条肥美的鲤鱼！修为+15',c:15},{t:'钓上一只破鞋子...运气不佳',c:2},
-    {t:'钓到一只古旧的木盒，修为+20',c:20},{t:'大鱼上钩！修为+30',c:30},
-    {t:'什么都没钓到，但心情平静',c:5},{t:'钓到一株水灵草！修为+50',c:50},
-  ];
-  const ev=evts[Math.floor(Math.random()*evts.length)];
-  G.cult+=ev.c; G.power+=Math.floor(ev.c*0.2); G.days++;
-  document.getElementById('acTxt').textContent=ev.t;
-  sv();
-}
-
-// ===== 后山 =====
-function renderBackHill(){
-  showSub(`<div class="sp-top"><span class="sp-back" onclick="showScene('map')">←</span><span class="sp-title">🌲 后山</span></div>
-  <div class="sp-body"><div class="area-grid">
-    <div class="area-card" style="background:#5a7a3a20;border:1px solid #5a7a3a;" onclick="goTo('外围')">
-      <div class="ico">🌳</div><div style="font-weight:700;">外围</div>
-      <div style="font-size:10px;color:#5a7a3a;">野狼🐺 野猪🐗</div></div>
-    <div class="area-card" style="background:#8b691420;border:1px solid #8b6914;" onclick="goTo('深处')">
-      <div class="ico">🌲</div><div style="font-weight:700;">深处</div>
-      <div style="font-size:10px;color:#8b6914;">毒蛇🐍 山贼🗡️ 猛虎🐯</div></div>
-    <div class="area-card" style="background:#8b250020;border:1px solid #8b2500;" onclick="goTo('险地')">
-      <div class="ico">⛰️</div><div style="font-weight:700;">险地</div>
-      <div style="font-size:10px;color:#8b2500;">黑熊🐻 山魈👺 巨蟒🐉</div></div>
-  </div>
-  <div id="battleArea" style="display:none;">
-    <div class="bf"><div class="mi" id="monIco">🐺</div>
-    <div class="hi" id="monInfo">准备战斗</div>
-    <div class="hb"><div class="hf" id="monHpBar" style="width:100%"></div></div>
-    <div class="bb">
-      <button class="b1" onclick="battle('atk')">⚔️ 攻击</button>
-      <button class="b2" onclick="battle('def')">🛡️ 防御</button>
-      <button class="b3" onclick="battle('run')">🏃 逃跑</button>
-    </div></div>
-  </div></div>`);
-}
-
-let curMon=null, inB=false;
-function goTo(area){
-  const pool=MONSTERS[area];
-  curMon={...pool[Math.floor(Math.random()*pool.length)]};
-  curMon.mh=curMon.hp; inB=true;
-  document.getElementById('battleArea').style.display='block';
-  document.getElementById('monIco').textContent=curMon.i;
-  document.getElementById('monInfo').innerHTML=`${curMon.i} ${curMon.n} HP:${curMon.hp}/${curMon.mh} 攻击:${curMon.atk}`;
-  document.getElementById('monHpBar').style.width='100%';
-}
-
-function battle(act){
-  if(!inB||!curMon)return;
-  if(act==='run'){document.getElementById('monInfo').textContent='你逃走了...';inB=false;curMon=null;return;}
-  const pa=5+Math.floor(G.power/100);
-  const db=act==='def'?2:1;
-  let dmg=Math.floor((pa+Math.random()*pa)/db);
-  curMon.hp-=dmg;if(curMon.hp<0)curMon.hp=0;
-  let log=`你对${curMon.i}造成了${dmg}点伤害！`;
-  if(curMon.hp>0){
-    let md=Math.floor(curMon.atk*(0.5+Math.random()*0.5));
-    if(act==='def')md=Math.floor(md*0.3);
-    G.power-=md;if(G.power<0)G.power=0;
-    document.getElementById('monInfo').innerHTML=`${log}<br>${curMon.i}反击造成${md}点伤害！HP:${curMon.hp}/${curMon.mh}`;
-    document.getElementById('monHpBar').style.width=(curMon.hp/curMon.mh*100)+'%';
-  } else {
-    G.power+=curMon.exp; G.cult+=Math.floor(curMon.exp*0.5); G.days++;
-    let drp='';
-    if(Math.random()<curMon.dr){drp=`🎁 掉落:${curMon.drp}`;G.cult+=Math.floor(curMon.exp*0.3);}
-    document.getElementById('monInfo').innerHTML=`💀 ${curMon.n}倒下！功力+${curMon.exp} ${drp}`;
-    inB=false;curMon=null;document.getElementById('battleArea').style.display='none';
-  }
-  sv();
-}
-
-// ===== 藏书阁 =====
-function renderLibrary(){
-  showSub(`<div class="sp-top"><span class="sp-back" onclick="showScene('map')">←</span><span class="sp-title">📚 藏书阁</span></div>
-  <div class="sp-body"><div style="text-align:center;padding:20px 0;"><div style="font-size:64px;">📚</div>
-  <p style="font-size:12px;color:#5a3a2a;margin:10px 0;">架上书籍琳琅满目。</p>
-  <button class="btn" onclick="doRead()">📖 开始读书</button></div>
-  <div class="ac"><div class="ci">📖</div><div class="ct" id="acTxt">选一本书来读...</div></div></div>`);
-}
-function doRead(){
-  const books=[
-    {t:'《江湖异闻录》 悟性+1 修为+20',c:20},{t:'《基础内功要义》 修为+25',c:25},
-    {t:'《剑术心得》 修为+30',c:30},{t:'《草药图鉴》 修为+15',c:15},
-    {t:'《天道感应篇》 修为+40',c:40},
-  ];
-  const b=books[Math.floor(Math.random()*books.length)];
-  G.cult+=b.c;G.power+=Math.floor(b.c*0.2);G.days++;
-  document.getElementById('acTxt').textContent=b.t;
-  sv();
-}
-
-// ===== 出师 =====
-function renderGraduate(){
-  const total=(G.awakenedFates?.length||0)+(G.innateFates?.length||0);
-  const can=G.power>=5000 && total>=6;
-  showSub(`<div class="sp-top"><span class="sp-back" onclick="showScene('map')">←</span><span class="sp-title">🚪 山门</span></div>
-  <div class="sp-body"><div style="text-align:center;padding:20px 0;"><div style="font-size:64px;">🚪</div>
-  <p style="font-size:12px;color:#5a3a2a;margin:10px 0;">山门外就是广阔的江湖。</p>
-  <p style="font-size:11px;color:#8b6914;">功力 ${fm(G.power)}/5000 | 命格 ${total}/6</p>
-  ${can?'<button class="btn" onclick="doGraduate()" style="margin-top:12px;">🎓 出师！</button>':'<p style="font-size:11px;color:#a08060;margin-top:12px;">还需修炼...</p>'}
-  </div></div>`);
-}
-function doGraduate(){
-  G.graduate=true;sv();
-  showModal('🎓 出师！','你终于达到了出师标准，山门外的江湖在等着你...（大地图功能开发中）');
-}
-
-// ===== 命格检测 =====
-function checkFates(){
-  if(!G.awakenedFates)G.awakenedFates=[];
-  // 天道酬勤
-  if(G.days>=100 && !G.awakenedFates.includes('tdcq')){
-    let p=1;if(G.innateFates.some(f=>f.id==='ft'||f.id==='pa'))p=2;
-    if(Math.random()<p){G.awakenedFates.push('tdcq');showModal('🏆 命格觉醒','【天道酬勤】<br>全修炼速度+20%');}
-  }
-  sv();
-}
-function showModal(t,m){
-  const ov=document.createElement('div');ov.className='modal-overlay';
-  ov.innerHTML=`<div class="modal"><h3>${t}</h3><p>${m}</p><button class="modal-btn" onclick="this.closest('.modal-overlay').remove()">知道了</button></div>`;
-  document.body.appendChild(ov);
-}
-
-// 启动
-window.onload = function(){ init(); };
-}
-// ===== 核心游戏逻辑 =====
-
-function init(){
-  G = ld();
-  if(!G.innateFates || G.innateFates.length === 0){
-    showFateDraw();
-  } else {
-    renderMap();
-  }
-  sv();
-  setInterval(sv, 30000);
-}
-
-function showFateDraw(){
-  const fates = [];
-  for(let i=0;i<3;i++) fates.push(drF());
-  fates.sort((a,b)=>'SABCD'.indexOf(a.r||'D')-'SABCD'.indexOf(b.r||'D'));
-  G.innateFates = fates;
-  document.getElementById('app').innerHTML = `
-    <div style="display:flex;height:100vh;align-items:center;justify-content:center;background:#f5e6c8;padding:20px;">
-      <div style="background:#fff8ef;border:3px solid #8b2500;border-radius:12px;padding:24px;max-width:320px;width:100%;text-align:center;">
-        <div style="font-size:36px;margin-bottom:12px;">🔮</div>
-        <h2 style="color:#2c1810;margin-bottom:16px;">你的天命</h2>
-        ${fates.map(f=>'<div style="margin:8px 0;padding:10px;border:1px solid '+(C_RAR[f.r]||'#888')+';border-radius:6px;">'+
-          '<span style="color:'+(C_RAR[f.r]||'#888')+';font-size:14px;">'+(STAR[f.r]||'')+'</span>'+
-          '<span style="font-size:16px;font-weight:700;color:#2c1810;">'+(f.n||f.name)+'</span>'+
-          '<p style="font-size:11px;color:#5a3a2a;margin-top:4px;">'+(f.desc||'')+'</p></div>').join('')}
-        <button class="btn" onclick="renderMap()" style="margin-top:12px;">踏入江湖</button>
-      </div>
-    </div>`;
-  sv();
-}
-
-// 练功
-function doPractice(){
-  if(!curSkill){ document.getElementById('acTxt').innerHTML='⚠️ 请先选择一门武功！'; return; }
-  const s = SKILLS.find(x=>x.id===curSkill);
-  let gs = G.skills.find(x=>x.id===curSkill);
-  if(!s||!gs) return;
-  if(gs.lv>=9&&gs.exp>=MAX_EXP){ document.getElementById('acTxt').textContent='此功已至化境。'; return; }
-  let bonus = 1;
-  if(G.innateFates.some(f=>f.id==='tl')) bonus+=0.5;
-  if(G.awakenedFates.includes('tdcq')) bonus+=0.2;
-  bonus *= 1.5;
-  let mult=1,eventMsg='',r=Math.random(),cum=0;
-  for(const ev of PRACTICE_EVENTS){cum+=ev.p;if(r<cum){mult=ev.m;eventMsg=ev.msg;break;}}
-  const gain = Math.floor(s.expPer * bonus * mult * rn(0.9,1.1));
-  gs.exp += gain;
-  while(gs.lv<9 && gs.exp>=(gs.lv+1)*500){ gs.lv++; G.power+=10+gs.lv*5; }
-  G.power += Math.floor(gain*(s.pow/12||1));
-  G.cult += Math.floor(gain*0.3);
-  G.days++;
-  document.getElementById('acTxt').innerHTML = eventMsg ? eventMsg + '<br><span style="color:#8b2500;font-weight:700;">熟练度 +'+gain+'（×'+mult+'）</span>' : '专注练习... 熟练度 +'+gain;
-  checkFates(); sv();
-}
-
-// 小屋
-function doAct(type){
-  if(type==='打坐'){const g=Math.floor(8+rn(0,10)+G.days*0.1);G.cult+=g;G.power+=Math.floor(g*0.3);G.days++;
-    document.getElementById('acTxt').textContent='盘膝而坐，内力流转... 修为+'+g;}
-  else{G.days++;document.getElementById('acTxt').textContent='美美地睡了一觉。';}
-  sv();
-}
-
-// 钓鱼
-function doFish(){
-  const ev=[{t:'钓到一条肥美的鲤鱼！修为+15',c:15},{t:'钓上一只破鞋子...',c:2},{t:'钓到古旧木盒 修为+20',c:20},{t:'大鱼上钩！修为+30',c:30},{t:'心情平静 修为+5',c:5},{t:'钓到水灵草！修为+50',c:50}];
-  const e=ev[Math.floor(Math.random()*ev.length)];
-  G.cult+=e.c;G.power+=Math.floor(e.c*0.2);G.days++;
-  document.getElementById('acTxt').textContent=e.t;sv();
-}
-
-// 后山
-function renderBackHill(){
-  showSub('<div class="sp-top"><span class="sp-back" onclick="showScene(\'map\')">←</span><span class="sp-title">🌲 后山</span></div>'+
-  '<div class="sp-body"><div class="area-grid">'+
-  '<div class="area-card" style="background:#5a7a3a20;border:1px solid #5a7a3a;" onclick="goTo(\'外围\')"><div class="ico">🌳</div><div style="font-weight:700;">外围</div><div style="font-size:10px;color:#5a7a3a;">野狼🐺 野猪🐗</div></div>'+
-  '<div class="area-card" style="background:#8b691420;border:1px solid #8b6914;" onclick="goTo(\'深处\')"><div class="ico">🌲</div><div style="font-weight:700;">深处</div><div style="font-size:10px;color:#8b6914;">毒蛇🐍 山贼🗡️ 猛虎🐯</div></div>'+
-  '<div class="area-card" style="background:#8b250020;border:1px solid #8b2500;" onclick="goTo(\'险地\')"><div class="ico">⛰️</div><div style="font-weight:700;">险地</div><div style="font-size:10px;color:#8b2500;">黑熊🐻 山魈👺 巨蟒🐉</div></div></div>'+
-  '<div id="battleArea"><div class="bf"><div class="mi" id="monIco">🐺</div><div class="hi" id="monInfo">选择区域进入...</div>'+
-  '<div class="hb"><div class="hf" id="monHpBar" style="width:100%"></div></div>'+
-  '<div class="bb"><button class="b1" onclick="battle(\'atk\')">⚔️ 攻击</button><button class="b2" onclick="battle(\'def\')">🛡️ 防御</button><button class="b3" onclick="battle(\'run\')">🏃 逃跑</button></div></div></div></div>');
-  document.getElementById('battleArea').style.display='none';
-}
-
-function goTo(area){
-  const pool={'外围':[{n:'野狼',i:'🐺',hp:30,atk:5,drp:'兽皮',dr:0.3,exp:8},{n:'野猪',i:'🐗',hp:50,atk:7,drp:'獠牙',dr:0.2,exp:12}],'深处':[{n:'毒蛇',i:'🐍',hp:40,atk:9,drp:'蛇胆',dr:0.25,exp:15},{n:'山贼',i:'🗡️',hp:70,atk:12,drp:'碎银',dr:0.4,exp:20},{n:'猛虎',i:'🐯',hp:100,atk:15,drp:'虎骨',dr:0.15,exp:30}],'险地':[{n:'黑熊',i:'🐻',hp:150,atk:18,drp:'熊胆',dr:0.2,exp:40},{n:'山魈',i:'👺',hp:80,atk:22,drp:'精魄',dr:0.1,exp:50},{n:'巨蟒',i:'🐉',hp:200,atk:25,drp:'蛇珠',dr:0.05,exp:80}]};
-  curMon={...pool[area][Math.floor(Math.random()*pool[area].length)]};curMon.mh=curMon.hp;inB=true;
-  document.getElementById('battleArea').style.display='block';
-  document.getElementById('monIco').textContent=curMon.i;
-  document.getElementById('monInfo').innerHTML=curMon.i+' '+curMon.n+' HP:'+curMon.hp+'/'+curMon.mh+' 攻击:'+curMon.atk;
-  document.getElementById('monHpBar').style.width='100%';
-}
-
-function battle(act){
-  if(!inB||!curMon)return;
-  if(act==='run'){document.getElementById('monInfo').textContent='你逃走了...';inB=false;curMon=null;return;}
-  const pa=5+Math.floor(G.power/100);
-  const db=act==='def'?2:1;
-  let dmg=Math.floor((pa+Math.random()*pa)/db);
-  curMon.hp-=dmg;if(curMon.hp<0)curMon.hp=0;
-  let log='你对'+curMon.i+'造成了'+dmg+'点伤害！';
-  if(curMon.hp>0){
-    let md=Math.floor(curMon.atk*(0.5+Math.random()*0.5));
-    if(act==='def')md=Math.floor(md*0.3);
-    G.power-=md;if(G.power<0)G.power=0;
-    document.getElementById('monInfo').innerHTML=log+'<br>'+curMon.i+'反击'+md+'点伤害！'+' HP:'+curMon.hp+'/'+curMon.mh;
-    document.getElementById('monHpBar').style.width=(curMon.hp/curMon.mh*100)+'%';
-  }else{
-    G.power+=curMon.exp;G.cult+=Math.floor(curMon.exp*0.5);G.days++;
-    let d='';if(Math.random()<curMon.dr){d='🎁 掉落:'+curMon.drp;G.cult+=Math.floor(curMon.exp*0.3);}
-    document.getElementById('monInfo').innerHTML='💀 '+curMon.n+'倒下！功力+'+curMon.exp+' '+d;
-    inB=false;curMon=null;document.getElementById('battleArea').style.display='none';
-  }
-  sv();
-}
-
-// 藏书阁  
-function renderLibrary(){
-  showSub('<div class="sp-top"><span class="sp-back" onclick="showScene(\'map\')">←</span><span class="sp-title">📚 藏书阁</span></div>'+
-  '<div class="sp-body"><div style="text-align:center;padding:20px 0;"><div style="font-size:64px;">📚</div>'+
-  '<p style="font-size:12px;color:#5a3a2a;margin:10px 0;">架上书籍琳琅满目。</p>'+
-  '<button class="btn" onclick="doRead()">📖 开始读书</button></div>'+
-  '<div class="ac"><div class="ci">📖</div><div class="ct" id="acTxt">选一本书来读...</div></div></div>');
-}
-function doRead(){
-  const bs=[{t:'《江湖异闻录》 修为+20',c:20},{t:'《内功要义》 修为+25',c:25},{t:'《剑术心得》 修为+30',c:30},{t:'《草药图鉴》 修为+15',c:15},{t:'《天道感应篇》 修为+40',c:40}];
-  const b=bs[Math.floor(Math.random()*bs.length)];
-  G.cult+=b.c;G.power+=Math.floor(b.c*0.2);G.days++;
-  document.getElementById('acTxt').textContent=b.t;sv();
-}
-
-// 出师
-function renderGraduate(){
-  const total=(G.awakenedFates?.length||0)+(G.innateFates?.length||0);
-  const can=G.power>=5000 && total>=6;
-  showSub('<div class="sp-top"><span class="sp-back" onclick="showScene(\'map\')">←</span><span class="sp-title">🚪 山门</span></div>'+
-  '<div class="sp-body"><div style="text-align:center;padding:20px 0;"><div style="font-size:64px;">🚪</div>'+
-  '<p style="font-size:12px;color:#5a3a2a;margin:10px 0;">山门外就是广阔的江湖。</p>'+
-  '<p style="font-size:11px;color:#8b6914;">功力 '+fm(G.power)+'/5000 | 命格 '+total+'/6</p>'+
-  (can?'<button class="btn" onclick="doGraduate()" style="margin-top:12px;">🎓 出师！</button>':'<p style="font-size:11px;color:#a08060;margin-top:12px;">还需修炼...</p>')+
-  '</div></div>');
-}
-function doGraduate(){G.graduate=true;sv();showModal('🎓 出师！','你终于出师了！更多江湖内容开发中...');}
-
-// 命格检测
-function checkFates(){
-  if(!G.awakenedFates)G.awakenedFates=[];
-  if(G.days>=100 && !G.awakenedFates.includes('tdcq')){
-    let p=1;if(G.innateFates.some(f=>f.id==='ft'||f.id==='pa'))p=2;
-    if(Math.random()<p){G.awakenedFates.push('tdcq');showModal('🏆 命格觉醒','【天道酬勤】<br>全修炼速度+20%');}
-  }
-  sv();
-}
-
-function showModal(t,m){
-  const ov=document.createElement('div');ov.className='modal-overlay';
-  ov.innerHTML='<div class="modal"><h3>'+t+'</h3><p>'+m+'</p><button class="modal-btn" onclick="this.closest(\'.modal-overlay\').remove()">知道了</button></div>';
-  document.body.appendChild(ov);
-}
-
-// 启动
-window.onload = function(){ init(); };
-
+init();
 </script>
 </body>
 </html>
