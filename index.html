@@ -5,49 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>武侠·崛起</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:#1a120e;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;font-family:'STKaiti','KaiTi',serif;touch-action:none;}
-canvas{display:block;width:480px;height:720px;background:#2c1810;border-radius:3px;box-shadow:0 0 20px rgba(0,0,0,0.5);}
-#hud{position:absolute;top:0;left:0;right:0;height:30px;background:rgba(44,24,16,0.85);display:flex;align-items:center;padding:0 10px;color:#e8d5b0;font-size:10px;justify-content:space-between;z-index:5;pointer-events:none;max-width:480px;}
-#msg{position:absolute;bottom:4px;left:4px;right:4px;text-align:center;font-size:10px;color:#5a3a2a;z-index:5;background:rgba(245,230,200,0.7);border-radius:4px;padding:3px;min-height:18px;max-width:480px;pointer-events:none;}
-#battleUI{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:10;flex-direction:column;align-items:center;justify-content:center;max-width:480px;}
-#battleUI.show{display:flex;}
-#battleUI .mi{font-size:60px;margin-bottom:6px;}
-#battleUI .info{font-size:12px;color:#e8d5b0;margin-bottom:6px;text-align:center;}
-#battleUI .hpbar{width:200px;height:8px;background:#333;border-radius:4px;overflow:hidden;margin-bottom:10px;}
-#battleUI .hpf{height:100%;background:#c0392b;transition:width 0.3s;}
-#battleUI button{padding:8px 16px;margin:0 3px;border:none;border-radius:5px;font-size:12px;font-family:inherit;cursor:pointer;}
-#battleUI .atk{background:#c0392b;color:#fff;}
-#battleUI .def{background:#5a7a3a;color:#fff;}
-#battleUI .run{background:#a08060;color:#fff;}
-#battleUI .blog{color:#a08060;font-size:10px;margin-top:8px;}
-.scene{display:none;position:absolute;top:0;left:0;width:100%;height:100%;max-width:480px;background:#f5e6c8;z-index:8;overflow-y:auto;}
-.scene.show{display:block;}
-.scene .sback{position:absolute;top:4px;left:8px;font-size:20px;cursor:pointer;color:#8b2500;z-index:9;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:#1a120e;overflow:hidden;height:100vh;width:100vw;touch-action:none;user-select:none;font-family:'STKaiti','KaiTi',serif;}
+canvas{display:block;position:absolute;top:0;left:0;}
+#hud{position:absolute;top:0;left:50%;transform:translateX(-50%);width:100%;height:30px;max-width:480px;background:rgba(44,24,16,0.85);display:flex;align-items:center;padding:0 10px;color:#e8d5b0;font-size:10px;justify-content:space-between;z-index:5;pointer-events:none;}
 </style>
 </head>
 <body>
-<div style="position:relative;width:480px;height:720px;max-width:100vw;max-height:100vh;">
 <canvas id="cv"></canvas>
-<div id="hud"><span id="hL">功力 0 · 修为 0 · 第1日</span><span id="hR">方向键移动·空格键进入</span></div>
-<div id="msg">走到建筑处按空格进入场景</div>
-<div id="battleUI">
-<div class="mi" id="bIco">🐺</div>
-<div class="info" id="bInfo">野狼 HP:30/30</div>
-<div class="hpbar"><div class="hpf" id="bHp" style="width:100%"></div></div>
-<div><button class="atk" onclick="bat('atk')">⚔️ 攻击</button><button class="def" onclick="bat('def')">🛡️ 防御</button><button class="run" onclick="bat('run')">🏃 逃跑</button></div>
-<div class="blog" id="bLog"></div>
-</div>
-</div>
+<div id="hud"><span id="hL">功力 0 · 修为 0 · 第1日</span><span id="hR">摇杆移动</span></div>
 <script>
-// ===== Canvas =====
-const W=480,H=690; // 720-30(hud)
+// ===== Canvas适配(480x720, 支持手机全屏) =====
+const LW=480,LH=720;
 const cv=document.getElementById('cv');
-cv.width=W;cv.height=H;
 const ctx=cv.getContext('2d');
 
+function resizeCanvas(){
+  const dpr=Math.min(window.devicePixelRatio||1,3);
+  const sw=window.innerWidth,sh=window.innerHeight;
+  const s=Math.min(sw/LW,sh/LH);
+  const dw=Math.floor(LW*s),dh=Math.floor(LH*s);
+  cv.width=LW*dpr;cv.height=LH*dpr;
+  cv.style.width=dw+'px';cv.style.height=dh+'px';
+  cv.style.left=Math.floor((sw-dw)/2)+'px';cv.style.top=Math.floor((sh-dh)/2)+'px';
+  ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr);
+  cv._scale=s;cv._dpr=dpr;cv._ox=Math.floor((sw-dw)/2);cv._oy=Math.floor((sh-dh)/2);
+}
+window.addEventListener('resize',resizeCanvas);
+window.addEventListener('orientationchange',()=>setTimeout(resizeCanvas,300));
+resizeCanvas();
+function sc(x,y){return{x:(x-cv._ox)/cv._scale,y:(y-cv._oy)/cv._scale};}
+
 // ===== 地图(20x28 tiles, 24px/tile) =====
-// 0=草地 1=墙 2=水 3=路 4=屋顶 5=木桩 6=钓鱼台 7=山门 8=书架
 const TS=24,CO=20,RO=28;
 const MAP=[
 "11111111111111111111",
@@ -79,120 +68,131 @@ const MAP=[
 "10000000000000000001",
 "11111111111111111111",
 ];
+const SCENES={s3:{n:'小屋',x:4,y:4,w:2,h:1},s6:{n:'练功场',x:17,y:5,w:2,h:1},s2:{n:'钓鱼台',x:3,y:16,w:2,h:2},s0:{n:'后山',x:17,y:16,w:2,h:2},s8:{n:'藏书阁',x:6,y:9,w:2,h:1},s9:{n:'山门',x:18,y:4,w:2,h:1}};
 
-// 场景入口: 走到这些tile上按空格触发
-const S={
-  '小屋':{x:4,y:4,w:2,h:1},
-  '练功场':{x:17,y:5,w:2,h:1},
-  '钓鱼台':{x:3,y:16,w:2,h:2},
-  '藏书阁':{x:6,y:9,w:2,h:1},
-  '后山':{x:17,y:16,w:2,h:2},
-  '山门':{x:18,y:4,w:2,h:1},
-};
-
-// ===== 游戏数据 =====
+// ===== 游戏状态 =====
 let G={p:0,c:0,d:1,b:[]};
 function ld(){try{let s=localStorage.getItem('wx3');if(s)return JSON.parse(s)}catch(e){}return{p:0,c:0,d:1,b:[]};}
 function sv(){G.last=Date.now();try{localStorage.setItem('wx3',JSON.stringify(G))}catch(e){}}
-G=ld();if(!G.b)G.b=[];
+G=ld();!G.b&&(G.b=[]);
 
-// 主角
-let px=TS*10,py=TS*15;
-let dir=0,walk=0,m=false;
-let inS=null,batting=false,cm=null;
-let k={};
+let px=LW/2,py=LH/2,dir=0,wk=0,mv=false;
+let batting=false,cm=null;
 
-document.addEventListener('keydown',e=>{
-  k[e.key]=true;
-  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
+// ===== 虚拟摇杆(参考研究数据: 中心80,620,外圈55,内圈22) =====
+let joy={dx:0,dy:0,active:false,pid:null};
+
+const jEl=document.createElement('div');
+jEl.style.cssText=`position:fixed;width:110px;height:110px;border-radius:50%;border:2px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.05);z-index:100;touch-action:none;pointer-events:none;`;
+const jKnob=document.createElement('div');
+jKnob.style.cssText=`position:fixed;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.5),rgba(200,200,200,0.2));border:1px solid rgba(255,255,255,0.4);z-index:101;touch-action:none;`;
+document.body.appendChild(jEl);document.body.appendChild(jKnob);
+
+function jPos(cx,cy){
+  jEl.style.left=(cx-55)+'px';jEl.style.top=(cy-55)+'px';
+  jKnob.style.left=(cx-22)+'px';jKnob.style.top=(cy-22)+'px';
+}
+jPos(80,620);
+
+jKnob.addEventListener('pointerdown',e=>{
+  e.preventDefault();joy.active=true;joy.pid=e.pointerId;
+  jKnob.setPointerCapture(e.pointerId);
 });
-document.addEventListener('keyup',e=>{k[e.key]=false;});
+document.addEventListener('pointermove',e=>{
+  if(!joy.active||e.pointerId!==joy.pid)return;
+  let dx=e.clientX-80,dy=e.clientY-620;
+  let d=Math.hypot(dx,dy),max=33;
+  if(d>max){dx=dx/d*max;dy=dy/d*max;}
+  jKnob.style.left=(80+dx-22)+'px';jKnob.style.top=(620+dy-22)+'px';
+  joy.dx=d>5?dx/max:0;joy.dy=d>5?dy/max:0;
+});
+document.addEventListener('pointerup',e=>{if(e.pointerId===joy.pid){joy.active=false;joy.pid=null;joy.dx=0;joy.dy=0;jPos(80,620);}});
+document.addEventListener('pointercancel',e=>{if(e.pointerId===joy.pid){joy.active=false;joy.pid=null;joy.dx=0;joy.dy=0;jPos(80,620);}});
 
-function w(tx,ty){return tx>=0&&tx<CO&&ty>=0&&ty<RO&&'0345678'.includes(M[ty][tx]);}
-function ck(nx,ny){return w(Math.floor(nx/TS),Math.floor(ny/TS))&&w(Math.ceil(nx/TS)-1,Math.floor(ny/TS))
-  &&w(Math.floor(nx/TS),Math.ceil(ny/TS)-1)&&w(Math.ceil(nx/TS)-1,Math.ceil(ny/TS)-1);}
+// 攻击按钮(参考: 右下角400,620)
+const aBtn=document.createElement('div');
+aBtn.textContent='⚔️';
+aBtn.style.cssText=`position:fixed;left:340px;top:560px;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,rgba(192,57,43,0.5),rgba(139,37,0,0.2));border:2px solid rgba(255,255,255,0.35);z-index:100;touch-action:none;display:flex;align-items:center;justify-content:center;font-size:22px;`;
+let atk=false;
+aBtn.addEventListener('pointerdown',e=>{e.preventDefault();atk=true;aBtn.style.transform='scale(0.85)';});
+aBtn.addEventListener('pointerup',e=>{atk=false;aBtn.style.transform='scale(1)';});
+aBtn.addEventListener('pointercancel',e=>{atk=false;aBtn.style.transform='scale(1)';});
+document.body.appendChild(aBtn);
 
-function upd(){
-  if(batting)return;
-  let dx=0,dy=0,sp=2.5;
-  if(k['ArrowUp']||k['w']){dy=-sp;dir=3;}
-  else if(k['ArrowDown']||k['s']){dy=sp;dir=0;}
-  else if(k['ArrowLeft']||k['a']){dx=-sp;dir=1;}
-  else if(k['ArrowRight']||k['d']){dx=sp;dir=2;}
-  if(dx||dy){m=true;walk++;}else{m=false;walk=0;}
-  let nx=px+dx,ny=py+dy;
-  if(ck(nx,ny)){px=nx;py=ny;}
-  if(px<10)px=10;if(px>W-10)px=W-10;if(py<20)py=20;if(py>H-10)py=H-10;
-  
-  if(k[' ']&&!batting){
-    k[' ']=false;
-    for(let[n,s]of Object.entries(S)){
-      if(px>=s.x*TS&&px<(s.x+s.w)*TS&&py>=s.y*TS&&py<(s.y+s.h)*TS){
-        showS(n);return;
-      }
-    }
-    // 后山区域随机遇怪
-    if(px<TS*5&&py>TS*12&&py<TS*20){
-      const pool=[{n:'野狼',i:'🐺',h:30,a:5,e:8},{n:'野猪',i:'🐗',h:50,a:7,e:12},{n:'毒蛇',i:'🐍',h:40,a:9,e:15}];
-      cm={...pool[Math.floor(Math.random()*pool.length)]};cm.mh=cm.h;batting=true;
-      document.getElementById('battleUI').classList.add('show');
-      document.getElementById('bIco').textContent=cm.i;
-      document.getElementById('bInfo').textContent=cm.n+' HP:'+cm.h+'/'+cm.mh;
-      document.getElementById('bHp').style.width='100%';
-      document.getElementById('bLog').textContent='';
-    }
-  }
+// 键盘支持
+let kd={};
+document.addEventListener('keydown',e=>{kd[e.key]=true;if(e.key.startsWith('Arrow')||e.key===' ')e.preventDefault();});
+document.addEventListener('keyup',e=>{kd[e.key]=false;});
+
+// ===== 碰撞 =====
+function can(tx,ty){return tx>=0&&tx<CO&&ty>=0&&ty<RO&&'0345678'.includes(MAP[ty][tx]);}
+function col(nx,ny){return can(Math.floor(nx/TS),Math.floor(ny/TS))&&can(Math.ceil(nx/TS)-1,Math.floor(ny/TS))&&can(Math.floor(nx/TS),Math.ceil(ny/TS)-1)&&can(Math.ceil(nx/TS)-1,Math.ceil(ny/TS)-1);}
+
+// ===== 战斗 =====
+function startBattle(m){
+  batting=true;cm=m;
+  document.getElementById('hR').textContent='战斗中！';
 }
-
-function showS(n){
-  inS=n;document.getElementById('hR').textContent='按ESC返回';
-  const T={'小屋':'🧘 打坐/休息','练功场':'👊 练武','钓鱼台':'🎣 钓鱼','藏书阁':'📖 读书','后山':'🌲 打怪','山门':'🚪 出师'};
-  document.getElementById('msg').textContent=T[n]||n;
-}
-function closeS(){inS=null;document.getElementById('hR').textContent='方向键移动·空格键进入';document.getElementById('msg').textContent='走到建筑处按空格进入场景';}
-
-// 战斗
-function bat(a){
+function doBattle(a){
   if(!batting||!cm)return;
-  if(a==='run'){document.getElementById('bLog').textContent='🏃 逃走了';batting=false;cm=null;document.getElementById('battleUI').classList.remove('show');return;}
-  const pa=5+Math.floor(G.p/100);
+  if(a==='run'){batting=false;cm=null;document.getElementById('hR').textContent='摇杆移动';return;}
+  let pa=5+Math.floor(G.p/100);
   let dm=Math.floor(pa*(0.5+Math.random()*0.5));
   if(a==='def')dm=Math.floor(dm*0.5);
-  cm.h-=dm;if(cm.h<0)cm.h=0;
-  let t='⚔️ '+dm+'点伤害！';
+  cm.h-=dm;
   if(cm.h>0){
     let md=Math.floor(cm.a*(0.5+Math.random()*0.5));
     if(a==='def')md=Math.floor(md*0.3);
     G.p-=md;if(G.p<0)G.p=0;
-    t+='\n'+cm.i+'反击'+md+'点！';
-    document.getElementById('bHp').style.width=(cm.h/cm.mh*100)+'%';
   }else{
     G.p+=cm.e;G.c+=Math.floor(cm.e*0.5);G.d++;
-    t='💀 '+cm.n+'倒下！功力+'+cm.e;
     batting=false;cm=null;
-    document.getElementById('battleUI').classList.remove('show');
+    document.getElementById('hR').textContent='摇杆移动';
   }
-  document.getElementById('bLog').textContent=t;
-  document.getElementById('bInfo').textContent=batting?cm.n+' HP:'+cm.h+'/'+cm.mh:'';
   sv();
 }
 
+// ===== 更新 =====
+function update(){
+  if(batting)return;
+  let dx=0,dy=0;
+  if(kd['ArrowUp']||kd['w']){dy=-1;dir=3;}
+  else if(kd['ArrowDown']||kd['s']){dy=1;dir=0;}
+  else if(kd['ArrowLeft']||kd['a']){dx=-1;dir=1;}
+  else if(kd['ArrowRight']||kd['d']){dx=1;dir=2;}
+  else if(joy.dx||joy.dy){dx=joy.dx;dy=joy.dy;if(Math.abs(dx)>Math.abs(dy)){dir=dx>0?2:1;}else{dir=dy>0?0:3;}}
+  
+  if(dx||dy){
+    let sp=3;let nx=px+dx*sp,ny=py+dy*sp;
+    if(col(nx,ny)){px=nx;py=ny;mv=true;wk++;}else{mv=false;wk=0;}
+  }else{mv=false;wk=0;}
+  px=Math.max(5,Math.min(LW-5,px));py=Math.max(15,Math.min(LH-15,py));
+  
+  if(atk){
+    atk=false;
+    // 后山遇怪
+    if(px<TS*5&&py>TS*12&&py<TS*20){
+      const pool=[{n:'野狼',i:'🐺',h:30,a:5,e:8},{n:'野猪',i:'🐗',h:50,a:7,e:12},{n:'竹叶青',i:'🐍',h:40,a:9,e:15}];
+      startBattle({...pool[Math.floor(Math.random()*pool.length)]});
+    }
+  }
+}
+
 // ===== 渲染 =====
-function drw(){
-  // 地图
+function draw(){
+  ctx.clearRect(0,0,LW,LH);
   for(let y=0;y<RO;y++)for(let x=0;x<CO;x++){
     const c=MAP[y][x];
-    let col={'0':'#8aba6a','1':'#3a5a2a','2':'#4a8ab5','3':'#c5a680','4':'#8b6914','5':'#5a3a2a','6':'#d4a574','7':'#6a4a2a','8':'#d4a574'}[c];
+    let col={'0':'#8aba6a','1':'#3a5a2a','2':'#4a8ab5','3':'#c5a680','4':'#8b6914','5':'#5a3a2a','6':'#d4a574','7':'#6a4a2a','8':'#d4a574'}[c]||'#5a3a2a';
     ctx.fillStyle=col;ctx.fillRect(x*TS,y*TS,TS,TS);
     if(c==='4'){ctx.fillStyle='#a07040';ctx.beginPath();ctx.moveTo(x*TS,y*TS+TS);ctx.lineTo(x*TS+TS/2,y*TS);ctx.lineTo(x*TS+TS,y*TS+TS);ctx.closePath();ctx.fill();}
   }
+  // 建筑标注
+  ctx.font='9px STKaiti';ctx.textAlign='center';ctx.fillStyle='#2c1810';
+  for(let[k,v]of Object.entries(SCENES))ctx.fillText(v.n,(v.x+v.w/2)*TS,v.y*TS-2);
   // 水纹
   ctx.fillStyle='rgba(74,138,181,0.1)';let ff=Date.now()/500;
   for(let y=16;y<20;y++)for(let x=2;x<6;x++){let o=Math.sin(ff+x+y)*3;ctx.beginPath();ctx.ellipse(x*TS+12,y*TS+12+o,6,2,0,0,Math.PI*2);ctx.fill();}
-  // 建筑标注
-  ctx.font='9px STKaiti';ctx.textAlign='center';ctx.fillStyle='#2c1810';
-  for(let[n,s]of Object.entries(S))ctx.fillText(n,(s.x+s.w/2)*TS,(s.y*TS-2));
-  
   // 主角
   const cx=Math.round(px),cy=Math.round(py);
   ctx.fillStyle='rgba(0,0,0,0.1)';ctx.beginPath();ctx.ellipse(cx+1,cy+14,7,2,0,0,Math.PI*2);ctx.fill();
@@ -200,15 +200,25 @@ function drw(){
   ctx.fillStyle='#f0d8a0';ctx.beginPath();ctx.arc(cx,cy-11,6,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#2c1810';ctx.beginPath();ctx.arc(cx-1,cy-14,5,0,Math.PI*2);ctx.fill();
   ctx.fillRect(cx-2,cy-19,4,5);
-  let sw=Math.sin(walk*0.3)*2;
+  let sw=Math.sin(wk*0.3)*2;
   ctx.strokeStyle='#ccc';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx+7,cy-3);ctx.lineTo(cx+10+sw,cy+10+sw);ctx.stroke();
+  
+  // 战斗弹窗
+  if(batting&&cm){
+    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,LW,LH);
+    ctx.font='48px serif';ctx.textAlign='center';ctx.fillText(cm.i||'🐺',LW/2,LH*0.35);
+    ctx.font='13px STKaiti';ctx.fillStyle='#e8d5b0';ctx.fillText(cm.n+' HP:'+cm.h+'/'+cm.mh,LW/2,LH*0.45);
+    ctx.fillStyle='#333';ctx.fillRect(LW*0.2,LH*0.49,LW*0.6,12);
+    ctx.fillStyle='#c0392b';ctx.fillRect(LW*0.2,LH*0.49,LW*0.6*(cm.h/cm.mh),12);
+    ctx.font='14px STKaiti';ctx.fillStyle='#fff';
+    ctx.fillText('⚔️ ATK|🛡️ DEF|🏃 RUN',LW/2,LH*0.6);
+  }
 }
 
+// ===== 主循环 =====
 function loop(){
-  upd();
-  ctx.clearRect(0,0,W,H);
-  drw();
-  document.getElementById('hL').textContent='功力 '+G.p+' · 修为 '+G.c+' · 第'+G.d+'日';
+  update();draw();
+  document.getElementById('hL').textContent=`功力 ${G.p} · 修为 ${G.c} · 第${G.d}日`;
   requestAnimationFrame(loop);
 }
 loop();
