@@ -5,194 +5,137 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>武侠·崛起</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{background:#1a120e;overflow:hidden;height:100vh;width:100vw;touch-action:none;user-select:none;font-family:'STKaiti','KaiTi',serif;}
-canvas{display:block;position:absolute;top:0;left:0;}
-#hud{position:absolute;top:0;left:50%;transform:translateX(-50%);width:100%;height:30px;max-width:480px;background:rgba(44,24,16,0.85);display:flex;align-items:center;padding:0 10px;color:#e8d5b0;font-size:10px;justify-content:space-between;z-index:5;pointer-events:none;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#1a120e;overflow:hidden;display:flex;justify-content:center;align-items:center;height:100vh;font-family:'STKaiti','KaiTi',serif;touch-action:none;}
+canvas{display:block;background:#2c1810;}
+#wrap{position:relative;}
+#hud{position:absolute;top:0;left:0;right:0;height:28px;background:rgba(44,24,16,0.85);display:flex;align-items:center;padding:0 10px;color:#e8d5b0;font-size:10px;justify-content:space-between;z-index:5;pointer-events:none;}
 </style>
 </head>
 <body>
-<canvas id="cv"></canvas>
-<div id="hud"><span id="hL">功力 0 · 修为 0 · 第1日</span><span id="hR">摇杆移动</span></div>
+<div id="wrap">
+<canvas id="cv" width="480" height="720"></canvas>
+<div id="hud"><span id="hL">功力 0 · 修为 0 · 第1日</span><span id="hR">方向键 + 空格</span></div>
+</div>
 <script>
-// ===== Canvas适配(480x720, 支持手机全屏) =====
-const LW=480,LH=720;
+const W=480,H=720;
 const cv=document.getElementById('cv');
 const ctx=cv.getContext('2d');
 
-function resizeCanvas(){
-  const dpr=Math.min(window.devicePixelRatio||1,3);
-  const sw=window.innerWidth,sh=window.innerHeight;
-  const s=Math.min(sw/LW,sh/LH);
-  const dw=Math.floor(LW*s),dh=Math.floor(LH*s);
-  cv.width=LW*dpr;cv.height=LH*dpr;
-  cv.style.width=dw+'px';cv.style.height=dh+'px';
-  cv.style.left=Math.floor((sw-dw)/2)+'px';cv.style.top=Math.floor((sh-dh)/2)+'px';
-  ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr);
-  cv._scale=s;cv._dpr=dpr;cv._ox=Math.floor((sw-dw)/2);cv._oy=Math.floor((sh-dh)/2);
-}
-window.addEventListener('resize',resizeCanvas);
-window.addEventListener('orientationchange',()=>setTimeout(resizeCanvas,300));
-resizeCanvas();
-function sc(x,y){return{x:(x-cv._ox)/cv._scale,y:(y-cv._oy)/cv._scale};}
+// ===== 加载tileset =====
+const tsImg = new Image();
+tsImg.src = 'assets/tileset.png';
+let tsLoaded = false;
+tsImg.onload = () => { tsLoaded = true; console.log('tileset loaded'); };
 
-// ===== 地图(20x28 tiles, 24px/tile) =====
-const TS=24,CO=20,RO=28;
+// ===== 地图(20x28 tiles) =====
+const CO=20,RO=28,TS=24;
+const TILE_ID = {
+// 把地图字符映射到tileset中的tile索引
+// 这个tileset是32x32网格，我们用24x24的游戏tile，所以要从tileset的32x32tile中取中心24x24画
+'0':0,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8
+};
 const MAP=[
-"11111111111111111111",
-"10000000300000000001",
-"10000000300000000001",
-"10000000300000000001",
-"10000000000000011101",
-"10000000000000000001",
-"10001111000000000001",
-"10000000000000000001",
-"10000000000000000001",
-"10000001000100000001",
-"10001111000111100001",
-"10000001000100000001",
-"10000001000100000001",
-"10000001000100000001",
-"10000000000000000001",
-"10000000000000111101",
-"10222200000000000001",
-"10222200000000000001",
-"10222200000000000001",
-"10022200000000000001",
-"10000000000000000001",
-"10000111100011100001",
-"11111000000000000001",
-"10000000000000000001",
-"10000000000000000001",
-"10000000000000000001",
-"10000000000000000001",
-"11111111111111111111",
+"11111111111111111111","10000000300000000001","10000000300000000001","10000000300000000001","10000000000000011101","10000000000000000001","10001111000000000001","10000000000000000001","10000000000000000001","10000001000100000001","10001111000111100001","10000001000100000001","10000001000100000001","10000001000100000001","10000000000000000001","10000000000000111101","10222200000000000001","10222200000000000001","10222200000000000001","10022200000000000001","10000000000000000001","10000111100011100001","11111000000000000001","10000000000000000001","10000000000000000001","10000000000000000001","10000000000000000001","11111111111111111111",
 ];
-const SCENES={s3:{n:'小屋',x:4,y:4,w:2,h:1},s6:{n:'练功场',x:17,y:5,w:2,h:1},s2:{n:'钓鱼台',x:3,y:16,w:2,h:2},s0:{n:'后山',x:17,y:16,w:2,h:2},s8:{n:'藏书阁',x:6,y:9,w:2,h:1},s9:{n:'山门',x:18,y:4,w:2,h:1}};
 
-// ===== 游戏状态 =====
+// 游戏状态
 let G={p:0,c:0,d:1,b:[]};
 function ld(){try{let s=localStorage.getItem('wx3');if(s)return JSON.parse(s)}catch(e){}return{p:0,c:0,d:1,b:[]};}
 function sv(){G.last=Date.now();try{localStorage.setItem('wx3',JSON.stringify(G))}catch(e){}}
-G=ld();!G.b&&(G.b=[]);
+G=ld();if(!G.b)G.b=[];
 
-let px=LW/2,py=LH/2,dir=0,wk=0,mv=false;
+let px=W/2,py=H/2,dir=0,wk=0,mv=false;
 let batting=false,cm=null;
 
-// ===== 虚拟摇杆(参考研究数据: 中心80,620,外圈55,内圈22) =====
-let joy={dx:0,dy:0,active:false,pid:null};
+// 键盘+摇杆
+let k={};
+document.addEventListener('keydown',e=>{k[e.key]=true;if(e.key.startsWith('Arrow')||e.key===' ')e.preventDefault();});
+document.addEventListener('keyup',e=>{k[e.key]=false;});
 
-const jEl=document.createElement('div');
-jEl.style.cssText=`position:fixed;width:110px;height:110px;border-radius:50%;border:2px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.05);z-index:100;touch-action:none;pointer-events:none;`;
-const jKnob=document.createElement('div');
-jKnob.style.cssText=`position:fixed;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.5),rgba(200,200,200,0.2));border:1px solid rgba(255,255,255,0.4);z-index:101;touch-action:none;`;
-document.body.appendChild(jEl);document.body.appendChild(jKnob);
+// 摇杆
+let jDx=0,jDy=0,jA=false,jP=null;
+const jE=document.createElement('div');jE.style.cssText='position:fixed;width:100px;height:100px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.04);z-index:100;touch-action:none;pointer-events:none;';
+const jK=document.createElement('div');jK.style.cssText='position:fixed;width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.4),rgba(200,200,200,0.15));border:1px solid rgba(255,255,255,0.3);z-index:101;touch-action:none;';
+document.body.appendChild(jE);document.body.appendChild(jK);
+function jp(){jE.style.left='30px';jE.style.top='570px';jK.style.left='42px';jK.style.top='582px';}
+jp();
+jK.addEventListener('pointerdown',e=>{e.preventDefault();jA=true;jP=e.pointerId;jK.setPointerCapture(e.pointerId);});
+document.addEventListener('pointermove',e=>{if(!jA||e.pointerId!==jP)return;let dx=e.clientX-80,dy=e.clientY-620,d=Math.hypot(dx,dy),mx=30;if(d>mx){dx=dx/d*mx;dy=dy/d*mx;}jK.style.left=(80+dx-20)+'px';jK.style.top=(620+dy-20)+'px';jDx=d>5?dx/mx:0;jDy=d>5?dy/mx:0;});
+document.addEventListener('pointerup',e=>{if(e.pointerId===jP){jA=false;jP=null;jDx=0;jDy=0;jp();}});
+document.addEventListener('pointercancel',e=>{if(e.pointerId===jP){jA=false;jP=null;jDx=0;jDy=0;jp();}});
 
-function jPos(cx,cy){
-  jEl.style.left=(cx-55)+'px';jEl.style.top=(cy-55)+'px';
-  jKnob.style.left=(cx-22)+'px';jKnob.style.top=(cy-22)+'px';
-}
-jPos(80,620);
-
-jKnob.addEventListener('pointerdown',e=>{
-  e.preventDefault();joy.active=true;joy.pid=e.pointerId;
-  jKnob.setPointerCapture(e.pointerId);
-});
-document.addEventListener('pointermove',e=>{
-  if(!joy.active||e.pointerId!==joy.pid)return;
-  let dx=e.clientX-80,dy=e.clientY-620;
-  let d=Math.hypot(dx,dy),max=33;
-  if(d>max){dx=dx/d*max;dy=dy/d*max;}
-  jKnob.style.left=(80+dx-22)+'px';jKnob.style.top=(620+dy-22)+'px';
-  joy.dx=d>5?dx/max:0;joy.dy=d>5?dy/max:0;
-});
-document.addEventListener('pointerup',e=>{if(e.pointerId===joy.pid){joy.active=false;joy.pid=null;joy.dx=0;joy.dy=0;jPos(80,620);}});
-document.addEventListener('pointercancel',e=>{if(e.pointerId===joy.pid){joy.active=false;joy.pid=null;joy.dx=0;joy.dy=0;jPos(80,620);}});
-
-// 攻击按钮(参考: 右下角400,620)
-const aBtn=document.createElement('div');
-aBtn.textContent='⚔️';
-aBtn.style.cssText=`position:fixed;left:340px;top:560px;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,rgba(192,57,43,0.5),rgba(139,37,0,0.2));border:2px solid rgba(255,255,255,0.35);z-index:100;touch-action:none;display:flex;align-items:center;justify-content:center;font-size:22px;`;
+// 攻击按钮
+const atB=document.createElement('div');atB.textContent='⚔️';atB.style.cssText='position:fixed;left:340px;top:570px;width:55px;height:55px;border-radius:50%;background:radial-gradient(circle,rgba(192,57,43,0.5),rgba(139,37,0,0.2));border:2px solid rgba(255,255,255,0.3);z-index:100;touch-action:none;display:flex;align-items:center;justify-content:center;font-size:20px;';
 let atk=false;
-aBtn.addEventListener('pointerdown',e=>{e.preventDefault();atk=true;aBtn.style.transform='scale(0.85)';});
-aBtn.addEventListener('pointerup',e=>{atk=false;aBtn.style.transform='scale(1)';});
-aBtn.addEventListener('pointercancel',e=>{atk=false;aBtn.style.transform='scale(1)';});
-document.body.appendChild(aBtn);
+atB.addEventListener('pointerdown',e=>{e.preventDefault();atk=true;atB.style.transform='scale(0.85)';});
+atB.addEventListener('pointerup',e=>{atk=false;atB.style.transform='scale(1)';});
+atB.addEventListener('pointercancel',e=>{atk=false;atB.style.transform='scale(1)';});
+document.body.appendChild(atB);
 
-// 键盘支持
-let kd={};
-document.addEventListener('keydown',e=>{kd[e.key]=true;if(e.key.startsWith('Arrow')||e.key===' ')e.preventDefault();});
-document.addEventListener('keyup',e=>{kd[e.key]=false;});
-
-// ===== 碰撞 =====
+// 碰撞
 function can(tx,ty){return tx>=0&&tx<CO&&ty>=0&&ty<RO&&'0345678'.includes(MAP[ty][tx]);}
 function col(nx,ny){return can(Math.floor(nx/TS),Math.floor(ny/TS))&&can(Math.ceil(nx/TS)-1,Math.floor(ny/TS))&&can(Math.floor(nx/TS),Math.ceil(ny/TS)-1)&&can(Math.ceil(nx/TS)-1,Math.ceil(ny/TS)-1);}
 
-// ===== 战斗 =====
-function startBattle(m){
-  batting=true;cm=m;
-  document.getElementById('hR').textContent='战斗中！';
-}
-function doBattle(a){
-  if(!batting||!cm)return;
-  if(a==='run'){batting=false;cm=null;document.getElementById('hR').textContent='摇杆移动';return;}
-  let pa=5+Math.floor(G.p/100);
-  let dm=Math.floor(pa*(0.5+Math.random()*0.5));
-  if(a==='def')dm=Math.floor(dm*0.5);
-  cm.h-=dm;
-  if(cm.h>0){
-    let md=Math.floor(cm.a*(0.5+Math.random()*0.5));
-    if(a==='def')md=Math.floor(md*0.3);
-    G.p-=md;if(G.p<0)G.p=0;
-  }else{
-    G.p+=cm.e;G.c+=Math.floor(cm.e*0.5);G.d++;
-    batting=false;cm=null;
-    document.getElementById('hR').textContent='摇杆移动';
-  }
-  sv();
-}
-
-// ===== 更新 =====
-function update(){
+function upd(){
   if(batting)return;
   let dx=0,dy=0;
-  if(kd['ArrowUp']||kd['w']){dy=-1;dir=3;}
-  else if(kd['ArrowDown']||kd['s']){dy=1;dir=0;}
-  else if(kd['ArrowLeft']||kd['a']){dx=-1;dir=1;}
-  else if(kd['ArrowRight']||kd['d']){dx=1;dir=2;}
-  else if(joy.dx||joy.dy){dx=joy.dx;dy=joy.dy;if(Math.abs(dx)>Math.abs(dy)){dir=dx>0?2:1;}else{dir=dy>0?0:3;}}
+  if(k['ArrowUp']||k['w']){dy=-1;dir=3;}else if(k['ArrowDown']||k['s']){dy=1;dir=0;}else if(k['ArrowLeft']||k['a']){dx=-1;dir=1;}else if(k['ArrowRight']||k['d']){dx=1;dir=2;}
+  else if(jDx||jDy){dx=jDx;dy=jDy;if(Math.abs(dx)>Math.abs(dy)){dir=dx>0?2:1;}else{dir=dy>0?0:3;}}
   
-  if(dx||dy){
-    let sp=3;let nx=px+dx*sp,ny=py+dy*sp;
-    if(col(nx,ny)){px=nx;py=ny;mv=true;wk++;}else{mv=false;wk=0;}
-  }else{mv=false;wk=0;}
-  px=Math.max(5,Math.min(LW-5,px));py=Math.max(15,Math.min(LH-15,py));
+  if(dx||dy){let sp=3,nx=px+dx*sp,ny=py+dy*sp;if(col(nx,ny)){px=nx;py=ny;mv=true;wk++;}else{mv=false;wk=0;}}else{mv=false;wk=0;}
+  px=Math.max(5,Math.min(W-5,px));py=Math.max(15,Math.min(H-15,py));
   
-  if(atk){
-    atk=false;
-    // 后山遇怪
+  if((k[' ']||atk)&&!batting){
+    k[' ']=false;atk=false;
     if(px<TS*5&&py>TS*12&&py<TS*20){
       const pool=[{n:'野狼',i:'🐺',h:30,a:5,e:8},{n:'野猪',i:'🐗',h:50,a:7,e:12},{n:'竹叶青',i:'🐍',h:40,a:9,e:15}];
-      startBattle({...pool[Math.floor(Math.random()*pool.length)]});
+      batting=true;cm={...pool[Math.floor(Math.random()*pool.length)]};cm.mh=cm.h;
     }
   }
 }
 
+// 战斗
+function bat(a){if(!batting||!cm)return;
+  if(a==='run'){batting=false;cm=null;return;}
+  const pa=5+Math.floor(G.p/100);
+  let dm=Math.floor(pa*(0.5+Math.random()*0.5));if(a==='def')dm=Math.floor(dm*0.5);
+  cm.h-=dm;if(cm.h>0){let md=Math.floor(cm.a*(0.5+Math.random()*0.5));if(a==='def')md=Math.floor(md*0.3);G.p-=md;if(G.p<0)G.p=0;}
+  else{G.p+=cm.e;G.c+=Math.floor(cm.e*0.5);G.d++;batting=false;cm=null;}
+  sv();
+}
+
 // ===== 渲染 =====
 function draw(){
-  ctx.clearRect(0,0,LW,LH);
-  for(let y=0;y<RO;y++)for(let x=0;x<CO;x++){
-    const c=MAP[y][x];
-    let col={'0':'#8aba6a','1':'#3a5a2a','2':'#4a8ab5','3':'#c5a680','4':'#8b6914','5':'#5a3a2a','6':'#d4a574','7':'#6a4a2a','8':'#d4a574'}[c]||'#5a3a2a';
-    ctx.fillStyle=col;ctx.fillRect(x*TS,y*TS,TS,TS);
-    if(c==='4'){ctx.fillStyle='#a07040';ctx.beginPath();ctx.moveTo(x*TS,y*TS+TS);ctx.lineTo(x*TS+TS/2,y*TS);ctx.lineTo(x*TS+TS,y*TS+TS);ctx.closePath();ctx.fill();}
+  ctx.clearRect(0,0,W,H);
+  
+  if(tsLoaded){
+    // 用tileset绘制地图
+    for(let y=0;y<RO;y++)for(let x=0;x<CO;x++){
+      const c=MAP[y][x];
+      const tid = {'0':0,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8}[c]||0;
+      const sx = (tid%32)*32 + 4;
+      const sy = Math.floor(tid/32)*32 + 4;
+      ctx.drawImage(tsImg, sx, sy, 24, 24, x*TS, y*TS, TS, TS);
+    }
+  }else{
+    // 素材未加载，用色块
+    for(let y=0;y<RO;y++)for(let x=0;x<CO;x++){
+      const c=MAP[y][x];
+      const col={'0':'#8aba6a','1':'#3a5a2a','2':'#4a8ab5','3':'#c5a680','4':'#8b6914','5':'#5a3a2a','6':'#d4a574','7':'#6a4a2a','8':'#d4a574'}[c]||'#5a3a2a';
+      ctx.fillStyle=col;ctx.fillRect(x*TS,y*TS,TS,TS);
+    }
   }
+  
   // 建筑标注
   ctx.font='9px STKaiti';ctx.textAlign='center';ctx.fillStyle='#2c1810';
-  for(let[k,v]of Object.entries(SCENES))ctx.fillText(v.n,(v.x+v.w/2)*TS,v.y*TS-2);
-  // 水纹
-  ctx.fillStyle='rgba(74,138,181,0.1)';let ff=Date.now()/500;
+  const SS={s3:{n:'小屋',x:4,y:4,w:2},s6:{n:'练功场',x:17,y:5,w:2},s2:{n:'钓鱼台',x:3,y:16,w:2},s0:{n:'后山',x:17,y:16,w:2},s8:{n:'藏书阁',x:6,y:9,w:2},s9:{n:'山门',x:18,y:4,w:2}};
+  for(const[k,v]of Object.entries(SS))ctx.fillText(v.n,(v.x+v.w/2)*TS,v.y*TS-2);
+  
+  // 水纹(叠加动画)
+  ctx.fillStyle='rgba(74,138,181,0.12)';let ff=Date.now()/500;
   for(let y=16;y<20;y++)for(let x=2;x<6;x++){let o=Math.sin(ff+x+y)*3;ctx.beginPath();ctx.ellipse(x*TS+12,y*TS+12+o,6,2,0,0,Math.PI*2);ctx.fill();}
+  
   // 主角
   const cx=Math.round(px),cy=Math.round(py);
   ctx.fillStyle='rgba(0,0,0,0.1)';ctx.beginPath();ctx.ellipse(cx+1,cy+14,7,2,0,0,Math.PI*2);ctx.fill();
@@ -205,22 +148,16 @@ function draw(){
   
   // 战斗弹窗
   if(batting&&cm){
-    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,LW,LH);
-    ctx.font='48px serif';ctx.textAlign='center';ctx.fillText(cm.i||'🐺',LW/2,LH*0.35);
-    ctx.font='13px STKaiti';ctx.fillStyle='#e8d5b0';ctx.fillText(cm.n+' HP:'+cm.h+'/'+cm.mh,LW/2,LH*0.45);
-    ctx.fillStyle='#333';ctx.fillRect(LW*0.2,LH*0.49,LW*0.6,12);
-    ctx.fillStyle='#c0392b';ctx.fillRect(LW*0.2,LH*0.49,LW*0.6*(cm.h/cm.mh),12);
-    ctx.font='14px STKaiti';ctx.fillStyle='#fff';
-    ctx.fillText('⚔️ ATK|🛡️ DEF|🏃 RUN',LW/2,LH*0.6);
+    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,W,H);
+    ctx.font='48px serif';ctx.textAlign='center';ctx.fillText(cm.i||'🐺',W/2,H*0.35);
+    ctx.font='13px STKaiti';ctx.fillStyle='#e8d5b0';ctx.fillText(cm.n+' HP:'+cm.h+'/'+cm.mh,W/2,H*0.45);
+    ctx.fillStyle='#333';ctx.fillRect(W*0.2,H*0.49,W*0.6,12);
+    ctx.fillStyle='#c0392b';ctx.fillRect(W*0.2,H*0.49,W*0.6*(cm.h/cm.mh),12);
+    ctx.font='14px STKaiti';ctx.fillStyle='#fff';ctx.fillText('⚔️ ATK  🛡️ DEF  🏃 RUN',W/2,H*0.6);
   }
 }
 
-// ===== 主循环 =====
-function loop(){
-  update();draw();
-  document.getElementById('hL').textContent=`功力 ${G.p} · 修为 ${G.c} · 第${G.d}日`;
-  requestAnimationFrame(loop);
-}
+function loop(){upd();draw();document.getElementById('hL').textContent='功力 '+G.p+' · 修为 '+G.c+' · 第'+G.d+'日';requestAnimationFrame(loop);}
 loop();
 </script>
 </body>
