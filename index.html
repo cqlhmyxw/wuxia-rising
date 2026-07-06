@@ -7,201 +7,195 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:#1a120e;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;font-family:'STKaiti','KaiTi',serif;}
-canvas{width:480px;height:720px;display:block;background:#2c1810;border-radius:3px;box-shadow:0 0 25px rgba(0,0,0,0.5);}
-#ui{position:relative;width:480px;height:720px;}
-#hud{position:absolute;top:0;left:0;right:0;height:36px;background:rgba(44,24,16,0.85);display:flex;align-items:center;padding:0 12px;color:#e8d5b0;font-size:12px;justify-content:space-between;z-index:5;pointer-events:none;}
-#msg{position:absolute;bottom:6px;left:6px;right:6px;text-align:center;font-size:11px;color:#a08060;z-index:5;pointer-events:none;background:rgba(245,230,200,0.65);border-radius:4px;padding:4px;min-height:22px;}
+canvas{display:block;}
+#cv{width:480px;height:720px;background:#2c1810;border-radius:3px;box-shadow:0 0 20px rgba(0,0,0,0.5);}
+#ui{position:absolute;pointer-events:none;width:480px;height:720px;}
+#hud{position:absolute;top:0;left:0;right:0;height:34px;background:rgba(44,24,16,0.88);display:flex;align-items:center;padding:0 12px;color:#e8d5b0;font-size:11px;justify-content:space-between;z-index:5;}
+#msg{position:absolute;bottom:6px;left:6px;right:6px;text-align:center;font-size:11px;color:#5a3a2a;z-index:5;background:rgba(245,230,200,0.7);border-radius:4px;padding:4px;min-height:22px;}
+.scene{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:#f5e6c8;z-index:10;overflow-y:auto;}
+.scene.show{display:block;}
+.scene .back{position:absolute;top:6px;left:8px;font-size:22px;cursor:pointer;color:#8b2500;z-index:11;pointer-events:auto;}
+.scene .title{text-align:center;font-size:14px;color:#2c1810;padding:10px0 4px;border-bottom:1px solid #d4a574;}
+.battle{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:15;flex-direction:column;align-items:center;justify-content:center;}
+.battle.show{display:flex;}
+.battle .mi{font-size:56px;margin-bottom:8px;}
+.battle .info{font-size:13px;color:#e8d5b0;margin-bottom:8px;text-align:center;}
+.battle .hpbar{width:200px;height:8px;background:#333;border-radius:4px;overflow:hidden;margin-bottom:12px;}
+.battle .hpf{height:100%;background:#c0392b;transition:width 0.3s;}
+.battle button{padding:8px 18px;margin:0 4px;border:none;border-radius:5px;font-size:12px;font-family:inherit;cursor:pointer;pointer-events:auto;}
+.atk{background:#c0392b;color:#fff;}
+.def{background:#5a7a3a;color:#fff;}
+.run{background:#a08060;color:#fff;}
 </style>
 </head>
 <body>
+<div style="position:relative;width:480px;height:720px;">
+<canvas id="cv" width="480" height="684"></canvas>
 <div id="ui">
-<canvas id="g" width="480" height="684"></canvas>
-<div id="hud"><span id="hL">功力 0 · 修为 0 · 第1日</span><span id="hR">←↑↓→ 走</span></div>
-<div id="msg">走到建筑处进入场景</div>
+<div id="hud"><span id="hL">功力 0 · 修为 0 · 第1日</span><span id="hR">←↑↓→移动</span></div>
+<div id="msg">走到建筑前按空格进入</div>
+</div>
+<div class="battle" id="battleUI">
+<div class="mi" id="bIcon">🐺</div>
+<div class="info" id="bInfo">野狼 HP:30/30</div>
+<div class="hpbar"><div class="hpf" id="bHp" style="width:100%"></div></div>
+<div><button class="atk" onclick="bAction('atk')">⚔️ 攻击</button><button class="def" onclick="bAction('def')">🛡️ 防御</button><button class="run" onclick="bAction('run')">🏃 逃跑</button></div>
+<div style="color:#c5a680;font-size:10px;margin-top:8px;" id="bLog"></div>
+</div>
 </div>
 <script>
-// ======== 工具 ========
-const TS=24,COLS=20,ROWS=28; // 480/24=20, 672/24=28  (HUD占36px)
-const W=480,H=672;
-const cv=document.getElementById('g');
-const ctx=cv.getContext('2d');
-
-// ======== 地图 ========
-// 0=草 1=墙 2=水 3=路 4=屋顶 5=木桩 6=书架 7=山门
+const TS=24, COLS=20, ROWS=28, W=480, H=684;
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 const M=[
 "11111111111111111111",
 "10000000300000000001",
-"10000000300003333001",
 "10000000300000000001",
-"10003443000000111101",
-"10000000000010000001",
-"10000000000010000001",
-"10003130000010000001",
-"10000000000010000001",
+"10000000300000000001",
+"10000000000000011101",
+"10000000000000000001",
+"10001111000000000001",
+"10000000000000000001",
+"10000000000000000001",
 "10000001000100000001",
 "10001111000111100001",
 "10000001000100000001",
-"10000001000100066001",
-"10000000000100066001",
-"10003330000000066001",
+"10000001000100000001",
+"10000001000100000001",
 "10000000000000000001",
-"10222200000001111001",
+"10000000000000111101",
+"10222200000000000001",
 "10222200000000000001",
 "10222200000000000001",
 "10022200000000000001",
 "10000000000000000001",
 "10000111100011100001",
-"11111000000000070001",
-"10000000000000070001",
-"10000000000000070001",
-"10000000000000070001",
+"11111000000000000001",
+"10000000000000000001",
+"10000000000000000001",
+"10000000000000000001",
 "10000000000000000001",
 "11111111111111111111",
 ];
+const ENTRIES={s3:{n:'小屋',x:4,y:4,w:2,h:1},s6:{n:'练功场',x:17,y:5,w:2,h:1},s2:{n:'钓鱼台',x:3,y:16,w:3,h:2},s0:{n:'后山',x:17,y:16,w:3,h:2},s8:{n:'藏书阁',x:6,y:9,w:2,h:1}};
 
-// ======== 游戏状态 ========
 let G={p:0,c:0,d:1,sp:[]};
 function ld(){try{let s=localStorage.getItem('wx2');if(s)return JSON.parse(s)}catch(e){}return{p:0,c:0,d:1,sp:[]};}
 function sv(){G.last=Date.now();try{localStorage.setItem('wx2',JSON.stringify(G))}catch(e){}}
-G=ld();
+G=ld();if(!G.sp)G.sp=[];
 
-// 主角(像素坐标)
-let px=TS*10,py=TS*15;
-let dir=0, walk=0, moving=false;
-
-// 输入
+let px=TS*10,py=TS*16,dir=0,walk=0,moving=false;
+let inScene=null,inBattle=false;
+let curMon=null;
 let k={};
-document.addEventListener('keydown',e=>{k[e.key]=true;if(e.key.startsWith('Arrow'))e.preventDefault();});
+document.addEventListener('keydown',e=>{k[e.key]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();});
 document.addEventListener('keyup',e=>{k[e.key]=false;});
 
-// ======== 碰撞 ========
-function walkable(tx,ty){
-  if(tx<0||tx>=COLS||ty<0||ty>=ROWS)return false;
-  const c=M[ty][tx];
-  return c==='0'||c==='3'||c==='5'||c==='6'||c==='7'||c==='4';
-}
+function walkable(tx,ty){return tx>=0&&tx<COLS&&ty>=0&&ty<ROWS&&'034567'.includes(M[ty][tx]);}
+function collides(nx,ny){return walkable(Math.floor(nx/TS),(ny/TS))&&walkable(Math.ceil(nx/TS)-1,(ny/TS))&&walkable(Math.floor(nx/TS),(Math.ceil(ny/TS)-1))&&walkable(Math.ceil(nx/TS)-1,(Math.ceil(ny/TS)-1));}
 
-function collides(nx,ny,r){
-  return walkable(Math.floor((nx-r)/TS),Math.floor((ny-r)/TS)) && walkable(Math.floor((nx+r)/TS),Math.floor((ny-r)/TS)) 
-      && walkable(Math.floor((nx-r)/TS),Math.floor((ny+r)/TS)) && walkable(Math.floor((nx+r)/TS),Math.floor((ny+r)/TS));
-}
-
-// ======== 主循环 ========
-let ft=0;
-
-function update(){
-  ft++;
+function updateMap(){
   let dx=0,dy=0;
-  if(k['ArrowUp']||k['w']||k['W']){dy=-2;dir=3;}
-  if(k['ArrowDown']||k['s']||k['S']){dy=2;dir=0;}
-  if(k['ArrowLeft']||k['a']||k['A']){dx=-2;dir=1;}
-  if(k['ArrowRight']||k['d']||k['D']){dx=2;dir=2;}
+  if(k['ArrowUp']||k['w']){dy=-1;dir=3;}
+  if(k['ArrowDown']||k['s']){dy=1;dir=0;}
+  if(k['ArrowLeft']||k['a']){dx=-1;dir=1;}
+  if(k['ArrowRight']||k['d']){dx=1;dir=2;}
   if(dx||dy){moving=true;walk++;}else{moving=false;walk=0;}
-  const sp=2.5;
-  let nx=px+dx*sp,ny=py+dy*sp;
-  if(collides(nx,ny,8)){px=nx;py=ny;}
+  let nx=px+dx*2.5,ny=py+dy*2.5;
+  if(collides(nx,ny)){px=nx;py=ny;}
+  if(px<10)px=10;if(px>W-10)px=W-10;if(py<20)py=20;if(py>H-10)py=H-10;
+  
+  if(k[' ']){
+    k[' ']=false;
+    // 检进入场景
+    for(const[key,v]of Object.entries(ENTRIES)){
+      if(px>v.x*TS&&px<(v.x+v.w)*TS&&py>v.y*TS&&py<(v.y+v.h)*TS){
+        showScene(key);break;
+      }
+    }
+    // 后山随机遇怪(左侧区域)
+    if(px<TS*4&&py>TS*12&&py<TS*20){
+      const pool=[{n:'野狼',i:'🐺',hp:30,at:5,ex:8},{n:'野猪',i:'🐗',hp:50,at:7,ex:12},{n:'毒蛇',i:'🐍',hp:40,at:9,ex:15}];
+      curMon={...pool[Math.floor(Math.random()*pool.length)]};curMon.mh=curMon.hp;
+      startBattle();
+    }
+  }
 }
 
+function showScene(id){
+  inScene=id;document.getElementById('hR').textContent='按ESC返回';
+  // 简单场景弹出(文字版，先跑通流程)
+  const scenes={'s3':'🏠 小屋 - 打坐/休息','s6':'🪵 练功场 - 15种武功','s2':'🎣 钓鱼台','s0':'🌲 后山 - 怪物出没','s8':'📚 藏书阁'};
+  document.getElementById('msg').textContent=scenes[id]||id;
+}
+
+// 战斗
+function startBattle(){
+  inBattle=true;
+  document.getElementById('battleUI').classList.add('show');
+  document.getElementById('bIcon').textContent=curMon.i;
+  document.getElementById('bInfo').textContent=`${curMon.n} HP:${curMon.hp}/${curMon.mh} 攻击${curMon.at}`;
+  document.getElementById('bHp').style.width='100%';
+  document.getElementById('bLog').textContent='';
+}
+
+function bAction(a){
+  if(!inBattle||!curMon)return;
+  if(a==='run'){document.getElementById('bLog').textContent='🏃 逃走了';inBattle=false;document.getElementById('battleUI').classList.remove('show');curMon=null;return;}
+  const pa=5+Math.floor(G.p/100);
+  let dmg=Math.floor(pa*(0.5+Math.random()*0.5));
+  if(a==='def')dmg=Math.floor(dmg*0.5);
+  curMon.hp-=dmg;if(curMon.hp<0)curMon.hp=0;
+  let txt=`⚔️ 造成${dmg}点伤害！`;
+  if(curMon.hp>0){
+    let md=Math.floor(curMon.at*(0.5+Math.random()*0.5));
+    if(a==='def')md=Math.floor(md*0.3);
+    G.p-=md;if(G.p<0)G.p=0;
+    txt+=`\n${curMon.i}反击${md}点！`;
+    document.getElementById('bHp').style.width=(curMon.hp/curMon.mh*100)+'%';
+  }else{
+    G.p+=curMon.ex;G.c+=Math.floor(curMon.ex*0.5);G.d++;
+    txt=`💀 ${curMon.n}倒下！功力+${curMon.ex}`;
+    inBattle=false;curMon=null;
+    document.getElementById('battleUI').classList.remove('show');
+  }
+  document.getElementById('bLog').textContent=txt;
+  document.getElementById('bInfo').textContent=inBattle?`${curMon.n} HP:${curMon.hp}/${curMon.mh}`:'';
+  sv();
+}
+
+// 绘制地图
 function draw(){
-  // 地图
-  for(let y=0;y<ROWS;y++){
-    for(let x=0;x<COLS;x++){
-      const c=M[y][x];
-      let col='';
-      switch(c){
-        case '0':col='#8aba6a';break;
-        case '1':col='#3a5a2a';break;
-        case '2':col='#4a8ab5';break;
-        case '3':col='#c5a680';break;
-        case '4':col='#8b6914';break;
-        case '5':col='#5a3a2a';break;
-        case '6':col='#d4a574';break;
-        case '7':col='#6a4a2a';break;
-      }
-      ctx.fillStyle=col;
-      ctx.fillRect(x*TS,y*TS,TS,TS);
-      
-      // 屋顶(4)
-      if(c==='4'){
-        ctx.fillStyle='#a07040';
-        ctx.beginPath();
-        ctx.moveTo(x*TS,y*TS+TS);
-        ctx.lineTo(x*TS+TS/2,y*TS);
-        ctx.lineTo(x*TS+TS,y*TS+TS);
-        ctx.closePath();ctx.fill();
-      }
-      // 木桩(5)
-      if(c==='5'){
-        ctx.fillStyle='#a08060';
-        ctx.fillRect(x*TS+8,y*TS+6,8,18);
-      }
-      // 门(7)
-      if(c==='7'){
-        ctx.fillStyle='#d4a574';
-        ctx.fillRect(x*TS+4,y*TS+4,16,20);
-        ctx.fillStyle='#8b2500';
-        ctx.beginPath();
-        ctx.arc(x*TS+16,y*TS+14,2,0,Math.PI*2);
-        ctx.fill();
-      }
-    }
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const c=M[y][x];
+    let col={0:'#8aba6a',1:'#3a5a2a',2:'#4a8ab5',3:'#c5a680',4:'#8b6914',5:'#5a3a2a',6:'#d4a574',7:'#6a4a2a'}[c]||'#5a3a2a';
+    ctx.fillStyle=col;ctx.fillRect(x*TS,y*TS,TS,TS);
+    if(c==='4'){ctx.fillStyle='#a07040';ctx.beginPath();ctx.moveTo(x*TS,y*TS+TS);ctx.lineTo(x*TS+TS/2,y*TS);ctx.lineTo(x*TS+TS,y*TS+TS);ctx.closePath();ctx.fill();}
   }
-  
-  // 水面波纹动画
-  ctx.fillStyle='rgba(74,138,181,0.15)';
-  for(let y=16;y<20;y++){
-    for(let x=2;x<6;x++){
-      const o=Math.sin(ft*0.03+x+y)*5;
-      ctx.beginPath();
-      ctx.ellipse(x*TS+12,y*TS+12+o,10,4,0,0,Math.PI*2);
-      ctx.fill();
-    }
-  }
+  // 水面波纹
+  ctx.fillStyle='rgba(74,138,181,0.12)';let ft=performance.now()/500;
+  for(let y=16;y<20;y++)for(let x=2;x<6;x++){const o=Math.sin(ft+x+y)*4;ctx.beginPath();ctx.ellipse(x*TS+12,y*TS+12+o,8,3,0,0,Math.PI*2);ctx.fill();}
   
   // 主角
-  const px2=Math.round(px),py2=Math.round(py);
-  // 影子
-  ctx.fillStyle='rgba(0,0,0,0.15)';
-  ctx.beginPath();
-  ctx.ellipse(px2+1,py2+14,8,3,0,0,Math.PI*2);
-  ctx.fill();
-  // 身体
-  ctx.fillStyle='#3a6a4a';
-  ctx.fillRect(px2-6,py2-8,12,18);
-  // 头
-  ctx.fillStyle='#f0d8a0';
-  ctx.beginPath();
-  ctx.arc(px2,py2-12,7,0,Math.PI*2);
-  ctx.fill();
-  // 头发
-  ctx.fillStyle='#2c1810';
-  ctx.beginPath();
-  ctx.arc(px2-1,py2-15,6,0,Math.PI*2);
-  ctx.fill();
-  // 发髻
-  ctx.fillRect(px2-2,py2-20,4,6);
-  // 剑(随走动摆动)
+  const cpx=Math.round(px),cpy=Math.round(py);
+  ctx.fillStyle='rgba(0,0,0,0.12)';ctx.beginPath();ctx.ellipse(cpx+1,cpy+14,8,3,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#3a6a4a';ctx.fillRect(cpx-6,cpy-8,12,18);
+  ctx.fillStyle='#f0d8a0';ctx.beginPath();ctx.arc(cpx,cpy-12,7,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#2c1810';ctx.beginPath();ctx.arc(cpx-1,cpy-15,6,0,Math.PI*2);ctx.fill();
+  ctx.fillRect(cpx-2,cpy-20,4,6);
   const sw=Math.sin(walk*0.3)*3;
-  ctx.strokeStyle='#ccc';
-  ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(px2+8,py2-4);
-  ctx.lineTo(px2+12+sw,py2+12+sw);
-  ctx.stroke();
-  // 剑柄
-  ctx.fillStyle='#8b6914';
-  ctx.fillRect(px2+6,py2-6,5,4);
+  ctx.strokeStyle='#ccc';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cpx+8,cpy-4);ctx.lineTo(cpx+12+sw,cpy+12+sw);ctx.stroke();
+
+  // 建筑标注
+  ctx.font='10px STKaiti';ctx.textAlign='center';ctx.fillStyle='#2c1810';
+  for(const[k,v]of Object.entries(ENTRIES))ctx.fillText(v.n,v.x*TS+v.w*TS/2,v.y*TS-2);
 }
 
 function loop(){
-  update();
-  ctx.clearRect(0,0,W,H);
-  draw();
-  // HUD更新
+  if(!inBattle&&!inScene)updateMap();
+  ctx.clearRect(0,0,W,H);draw();
   document.getElementById('hL').textContent=`功力 ${G.p} · 修为 ${G.c} · 第${G.d}日`;
   requestAnimationFrame(loop);
 }
-
 loop();
 </script>
 </body>
