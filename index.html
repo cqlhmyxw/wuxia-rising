@@ -24,17 +24,29 @@ canvas{display:block;width:100vw;height:100dvh}
 
 <!-- Three.js CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- OrbitControls 和 GLTFLoader -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
 // ============ 场景 ============
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87CEEB); // 天蓝色
+scene.background = new THREE.Color(0x87CEEB);
 scene.fog = new THREE.Fog(0x87CEEB, 50, 120);
 
 // ============ 相机 ============
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 200);
 camera.position.set(15, 12, 20);
-camera.lookAt(0, 0, 0);
+
+// OrbitControls - 手指/鼠标拖拽360度旋转
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI/2.2;
+controls.minDistance = 5;
+controls.maxDistance = 35;
+controls.update();
 
 // ============ 渲染器 ============
 const renderer = new THREE.WebGLRenderer({antialias:true});
@@ -169,57 +181,98 @@ function createHouse(x, z){
   return group;
 }
 
-const houses = [];
+const houses = new THREE.Group();
 for(let i=0;i<5;i++){
   const angle = Math.random()*Math.PI*2;
   const dist = 8 + Math.random()*12;
   const x = Math.cos(angle)*dist, z = Math.sin(angle)*dist;
   const house = createHouse(x, z);
-  scene.add(house);
-  houses.push(house);
+  houses.add(house);
 }
+scene.add(houses);
 
-// ============ 主角 ============
+
+// ============ 主角（组合成完整人物形象） ============
 function createPlayer(){
   const group = new THREE.Group();
-  // 身体
+  
+  // 身体（古风青衫）
   const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.4, 0.4, 1.0, 8),
-    new THREE.MeshStandardMaterial({color: 0x4a7a5a, roughness: 0.7})
+    new THREE.CylinderGeometry(0.35, 0.45, 0.9, 8),
+    new THREE.MeshStandardMaterial({color: 0x3a6a4a, roughness: 0.7})
   );
-  body.position.y = 0.5;
+  body.position.y = 0.7;
   body.castShadow = true;
   group.add(body);
+  
   // 头
   const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.3, 8, 8),
-    new THREE.MeshStandardMaterial({color: 0xe8c080, roughness: 0.6})
+    new THREE.SphereGeometry(0.28, 10, 10),
+    new THREE.MeshStandardMaterial({color: 0xe8c080, roughness: 0.5})
   );
-  head.position.y = 1.1;
+  head.position.y = 1.2;
   head.castShadow = true;
   group.add(head);
-  // 剑
-  const sword = new THREE.Mesh(
-    new THREE.BoxGeometry(0.05, 0.6, 0.02),
-    new THREE.MeshStandardMaterial({color: 0xc0c0c0, metalness: 0.8, roughness: 0.3})
+  
+  // 发髻
+  const bun = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 6, 6),
+    new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: 0.9})
   );
-  sword.position.set(0.4, 0.5, 0);
+  bun.position.set(0, 1.42, 0.08);
+  group.add(bun);
+  
+  // 左臂
+  const lArm = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.09, 0.4, 6),
+    new THREE.MeshStandardMaterial({color: 0x3a6a4a, roughness: 0.7})
+  );
+  lArm.position.set(-0.38, 0.8, 0);
+  lArm.rotation.z = 0.15;
+  lArm.castShadow = true;
+  group.add(lArm);
+  
+  // 右臂
+  const rArm = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.09, 0.4, 6),
+    new THREE.MeshStandardMaterial({color: 0x3a6a4a, roughness: 0.7})
+  );
+  rArm.position.set(0.38, 0.8, 0);
+  rArm.rotation.z = -0.15;
+  rArm.castShadow = true;
+  group.add(rArm);
+  
+  // 剑（挂在右侧）
+  const sword = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.5, 0.015),
+    new THREE.MeshStandardMaterial({color: 0xd0d0d0, metalness: 0.8, roughness: 0.2})
+  );
+  sword.position.set(0.45, 0.55, 0);
   group.add(sword);
-  // 剑柄
-  const handle = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.15, 0.04),
+  const sHandle = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, 0.12, 0.03),
     new THREE.MeshStandardMaterial({color: 0x4a2a0a, roughness: 0.9})
   );
-  handle.position.set(0.4, 0.15, 0);
-  group.add(handle);
+  sHandle.position.set(0.45, 0.25, 0);
+  group.add(sHandle);
+  
   // 腰带
   const belt = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.42, 0.42, 0.06, 8),
+    new THREE.TorusGeometry(0.25, 0.04, 6, 12),
     new THREE.MeshStandardMaterial({color: 0x8b4513, roughness: 0.8})
   );
-  belt.position.y = 0.3;
+  belt.position.y = 0.5;
+  belt.rotation.x = Math.PI/2;
   group.add(belt);
-
+  
+  // 衣摆（下身裙摆状的装饰）
+  const skirt = new THREE.Mesh(
+    new THREE.ConeGeometry(0.35, 0.15, 8),
+    new THREE.MeshStandardMaterial({color: 0x3a6a4a, roughness: 0.7})
+  );
+  skirt.position.y = 0.25;
+  group.add(skirt);
+  
   return group;
 }
 
@@ -263,10 +316,20 @@ function updateJoy(e){
 }
 
 // ============ 游戏循环 ============
-const SPEED = 6;
+const SPEED = 5;
 const TURN_SPEED = 0.08;
+let inHouse = false;
+let currentHouse = null;
 
 function update(){
+  if(inHouse) {
+    // 室内模式 - 不处理移动
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(update);
+    return;
+  }
+  
   let dx=0, dy=0;
   if(keys['ArrowUp']||keys['w']||keys['W']||jDy<-0.3) dy=-1;
   if(keys['ArrowDown']||keys['s']||keys['S']||jDy>0.3) dy=1;
@@ -275,15 +338,12 @@ function update(){
 
   if(dx!==0||dy!==0){
     const len=Math.sqrt(dx*dx+dy*dy);
-    targetX = player.position.x + dx/len * SPEED * 0.016;
-    targetZ = player.position.z + dy/len * SPEED * 0.016;
+    const nx = player.position.x + dx/len * SPEED * 0.016;
+    const nz = player.position.z + dy/len * SPEED * 0.016;
 
     // 约束在场景内
-    targetX = Math.max(-28, Math.min(28, targetX));
-    targetZ = Math.max(-28, Math.min(28, targetZ));
-
-    player.position.x = targetX;
-    player.position.z = targetZ;
+    player.position.x = Math.max(-28, Math.min(28, nx));
+    player.position.z = Math.max(-28, Math.min(28, nz));
 
     // 朝向移动方向
     const targetAngle = Math.atan2(dx, dy);
@@ -293,35 +353,188 @@ function update(){
     playerAngle += diff * 0.15;
     player.rotation.y = playerAngle;
 
-    // 走动时轻微上下浮动
-    player.position.y = Math.sin(Date.now() * 0.008) * 0.03;
+    // 走路起伏
+    player.position.y = Math.sin(Date.now() * 0.008) * 0.04;
   } else {
     player.position.y = 0;
   }
 
-  // 相机跟随
-  const camDist = 18;
-  const camHeight = 10;
-  const lookAhead = 3;
-  const px = player.position.x;
-  const pz = player.position.z;
-  camera.position.x += (px + camDist * 0.3 - camera.position.x) * 0.05;
-  camera.position.z += (pz + camDist * 0.7 - camera.position.z) * 0.05;
-  camera.position.y += (camHeight - camera.position.y) * 0.05;
-  camera.lookAt(px, 0, pz + lookAhead);
+  // 检测是否靠近房子（碰撞检测）
+  let nearHouse = false;
+  houses.children.forEach((child, i)=>{
+    const hx = child.position.x;
+    const hz = child.position.z;
+    const dist = Math.sqrt(
+      (player.position.x-hx)**2 + (player.position.z-hz)**2
+    );
+    if(dist < 2.5 && !nearHouse) nearHouse = true;
+  });
+  
+  // 按空格键进屋
+  if(nearHouse && keys[' '] && !inHouse) {
+    enterHouse(0);
+    keys[' '] = false;
+  }
+
+  // 控制器的target跟随玩家
+  controls.target.lerp(new THREE.Vector3(player.position.x, 0, player.position.z), 0.05);
+  controls.update();
 
   renderer.render(scene, camera);
   requestAnimationFrame(update);
 }
 
-// ============ 窗口缩放 ============
+// ============ 场景切换（进屋/出屋） ============
+function enterHouse(index){
+  inHouse = true;
+  currentHouse = index;
+  // 把房屋周围隐藏，渲染室内场景
+  // 简化版：显示一个室内全景
+  houses.visible = false;
+  trees.forEach(t=>t.visible = false);
+  ground.visible = false;
+  player.visible = false;
+  
+  // 室内场景
+  createInterior();
+  
+  // HUD提示
+  document.getElementById('hud').innerHTML = '<span class="name">🏠 室内</span><span class="stat">按 ESC 离开</span>';
+}
+
+function exitHouse(){
+  inHouse = false;
+  houses.visible = true;
+  trees.forEach(t=>t.visible = true);
+  ground.visible = true;
+  player.visible = true;
+  document.getElementById('hud').innerHTML = '<span class="name">武侠·崛起 3D</span><span class="stat">方向键/WASD移动 · 空格进屋 · 拖拽旋转</span>';
+}
+
+// 室内场景
+let interiorGroup = null;
+function createInterior(){
+  if(interiorGroup) { scene.remove(interiorGroup); }
+  interiorGroup = new THREE.Group();
+  
+  // 地面
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(6, 6),
+    new THREE.MeshStandardMaterial({color: 0x8a7040, roughness: 0.9})
+  );
+  floor.rotation.x = -Math.PI/2;
+  floor.position.y = -0.5;
+  interiorGroup.add(floor);
+  
+  // 墙（四面）
+  const wallMat = new THREE.MeshStandardMaterial({color: 0xc0a080, roughness: 0.9, side: THREE.DoubleSide});
+  const walls = [
+    {pos:[0,1.5,-3],size:[6,3,0.1]},
+    {pos:[0,1.5,3],size:[6,3,0.1]},
+    {pos:[-3,1.5,0],size:[0.1,3,6]},
+    {pos:[3,1.5,0],size:[0.1,3,6]}
+  ];
+  walls.forEach(w=>{
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(...w.size), wallMat);
+    wall.position.set(...w.pos);
+    wall.receiveShadow = true;
+    interiorGroup.add(wall);
+  });
+  
+  // 屋顶
+  const ceiling = new THREE.Mesh(
+    new THREE.PlaneGeometry(6, 6),
+    new THREE.MeshStandardMaterial({color: 0xa08060, roughness: 0.9, side: THREE.DoubleSide})
+  );
+  ceiling.position.y = 3;
+  ceiling.rotation.x = Math.PI/2;
+  interiorGroup.add(ceiling);
+  
+  // 桌子
+  const table = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.05, 0.5),
+    new THREE.MeshStandardMaterial({color: 0x6a4a2a, roughness: 0.8})
+  );
+  table.position.set(0, 0.5, 0);
+  interiorGroup.add(table);
+  // 桌腿
+  for(let tx of [-0.35, 0.35]){
+    for(let tz of [-0.2, 0.2]){
+      const leg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4),
+        new THREE.MeshStandardMaterial({color: 0x6a4a2a, roughness: 0.8})
+      );
+      leg.position.set(tx, 0.25, tz);
+      interiorGroup.add(leg);
+    }
+  }
+  
+  // 床
+  const bed = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.15, 1.2),
+    new THREE.MeshStandardMaterial({color: 0x5a6a4a, roughness: 0.9})
+  );
+  bed.position.set(-1.5, 0.25, 0.5);
+  interiorGroup.add(bed);
+  const bedMat = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.02, 1.2),
+    new THREE.MeshStandardMaterial({color: 0x8a7a5a, roughness: 0.9})
+  );
+  bedMat.position.set(-1.5, 0.35, 0.5);
+  interiorGroup.add(bedMat);
+  
+  // 书架
+  const shelf = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 1.2, 0.15),
+    new THREE.MeshStandardMaterial({color: 0x6a4a2a, roughness: 0.8})
+  );
+  shelf.position.set(1.5, 0.8, -2.5);
+  interiorGroup.add(shelf);
+  
+  // 点燃的灯（黄色小方块）
+  const lamp = new THREE.Mesh(
+    new THREE.SphereGeometry(0.08, 6, 6),
+    new THREE.MeshStandardMaterial({color: 0xffaa40, emissive: 0xff8800, emissiveIntensity: 1.5})
+  );
+  lamp.position.set(0, 2.5, 0);
+  interiorGroup.add(lamp);
+  
+  // 室内光照
+  const interiorLight = new THREE.PointLight(0xffcc80, 0.8, 8);
+  interiorLight.position.set(0, 2.5, 0);
+  interiorGroup.add(interiorLight);
+  
+  scene.add(interiorGroup);
+  
+  // 相机移到室内
+  camera.position.set(2, 2, 4);
+  controls.target.set(0, 0.5, 0);
+  controls.minDistance = 1;
+  controls.maxDistance = 8;
+  controls.update();
+}
+
+// 按ESC离开
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape' && inHouse) {
+    exitHouse();
+    camera.position.set(15, 12, 20);
+    controls.target.set(0, 0, 0);
+    controls.minDistance = 5;
+    controls.maxDistance = 35;
+    controls.update();
+  }
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+});
+
+// 窗口缩放
 window.addEventListener('resize', ()=>{
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// ============ 启动 ============
+// 启动
 document.getElementById('loading').style.display = 'none';
 update();
 </script>
