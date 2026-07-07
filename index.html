@@ -189,16 +189,37 @@ function animate() {
   if (keys.ArrowRight || keys.d || keys.D) dx = 1;
 
   if (dx || dy) {
-    const l = Math.sqrt(dx * dx + dy * dy);
-    const speed = 5 * 0.016;
-    player.position.x = Math.max(-18, Math.min(18, player.position.x + dx / l * speed));
-    player.position.z = Math.max(-18, Math.min(18, player.position.z + dy / l * speed));
-    const ta = Math.atan2(dx, dy);
-    let diff = ta - playerAngle;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    playerAngle += diff * 0.15;
-    player.rotation.y = playerAngle;
+    // 获取相机的前方向和右方向（在水平面上，忽略倾斜）
+    const camDir = new THREE.Vector3();
+    camera.getWorldDirection(camDir);
+    camDir.y = 0;
+    camDir.normalize();
+    
+    // 右方向 = 前方向 绕Y轴旋转90度
+    const camRight = new THREE.Vector3();
+    camRight.crossVectors(camDir, new THREE.Vector3(0, 1, 0)).normalize();
+    
+    // 将dx/dy从相机方向映射到世界坐标
+    const moveDir = new THREE.Vector3()
+      .addScaledVector(camRight, dx)
+      .addScaledVector(camDir, -dy);  // dy负号因为3D坐标Z正方向对应"向下"
+    
+    if (moveDir.length() > 0) {
+      moveDir.normalize();
+      const speed = 5 * 0.016;
+      const nx = player.position.x + moveDir.x * speed;
+      const nz = player.position.z + moveDir.z * speed;
+      player.position.x = Math.max(-18, Math.min(18, nx));
+      player.position.z = Math.max(-18, Math.min(18, nz));
+      
+      // 人物朝向移动方向
+      const ta = Math.atan2(moveDir.x, moveDir.z);
+      let diff = ta - playerAngle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      playerAngle += diff * 0.15;
+      player.rotation.y = playerAngle;
+    }
   }
 
   controls.target.set(player.position.x, 0, player.position.z);
