@@ -3,192 +3,327 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>武侠·崛起</title>
+<title>武侠·崛起 3D</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#1a120e;overflow:hidden;display:flex;justify-content:center;align-items:center;height:100dvh;font-family:'KaiTi','STKaiti',serif;touch-action:none;-webkit-user-select:none;user-select:none}
-#game-box{position:relative;width:min(100vw,480px);height:min(100dvh,720px);overflow:hidden;background:#2d1f14;border-radius:8px;box-shadow:0 0 30px rgba(0,0,0,.5)}
-canvas{display:block;width:100%;height:100%;background:#a8c8a0}
-#hud{position:absolute;top:0;left:0;right:0;height:36px;background:linear-gradient(180deg,rgba(30,18,10,.92),rgba(30,18,10,.7));display:flex;align-items:center;padding:0 10px;color:#e8d5a0;font-size:13px;z-index:10;gap:8px}
+body{background:#1a120e;overflow:hidden;touch-action:none;font-family:'KaiTi','STKaiti',serif}
+canvas{display:block;width:100vw;height:100dvh}
+#loading{position:fixed;top:0;left:0;width:100%;height:100%;background:#1a120e;color:#e8d5a0;display:flex;justify-content:center;align-items:center;font-size:20px;z-index:100;font-family:'KaiTi','STKaiti',serif}
+#hud{position:fixed;top:0;left:0;right:0;height:40px;background:linear-gradient(180deg,rgba(30,18,10,.92),rgba(30,18,10,.7));display:flex;align-items:center;padding:0 12px;color:#e8d5a0;font-size:14px;z-index:10;gap:10px;pointer-events:none}
 #hud .name{color:#f0d080;font-weight:bold}
 #hud .stat{color:#c0a870}
-#joystick{position:absolute;left:20px;bottom:30px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.2);z-index:20;display:none;touch-action:none}
-#joystick .knob{position:absolute;top:50%;left:50%;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.35);transform:translate(-50%,-50%);pointer-events:none;transition:none}
-#btn-atk{position:absolute;right:20px;bottom:30px;width:64px;height:64px;border-radius:50%;background:rgba(180,40,30,.7);border:2px solid rgba(255,100,80,.5);color:#fff;font-size:14px;font-family:inherit;z-index:20;display:none;align-items:center;justify-content:center;touch-action:none;cursor:pointer}
-#btn-atk:active{background:rgba(220,60,40,.9)}
-@media(hover:none)and(pointer:coarse){#joystick,#btn-atk{display:flex}}
+#joystick{position:fixed;left:20px;bottom:30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.2);z-index:20;display:none;touch-action:none}
+#joystick .knob{position:absolute;top:50%;left:50%;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.35);transform:translate(-50%,-50%);pointer-events:none}
+@media(hover:none)and(pointer:coarse){#joystick{display:block}}
 </style>
 </head>
 <body>
-<div id="game-box">
-<canvas id="cv"></canvas>
-<div id="hud"><span class="name">小侠</span><span class="stat">功力<span id="sPower">0</span></span><span class="stat">修为<span id="sCult">0</span></span><span class="stat">第<span id="sDay">1</span>日</span></div>
+<div id="loading">加载3D场景中...</div>
+<div id="hud"><span class="name">武侠·崛起 3D</span><span class="stat">方向键/WASD移动</span></div>
 <div id="joystick"><div class="knob" id="knob"></div></div>
-<button id="btn-atk">⚔</button>
-</div>
+
+<!-- Three.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
 <script>
-// ============ 游戏数据 ============
-const TSZ = 32; const COLS = 15; const ROWS = 20;
-const W = COLS * TSZ; const H = ROWS * TSZ;
+// ============ 场景 ============
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB); // 天蓝色
+scene.fog = new THREE.Fog(0x87CEEB, 50, 120);
 
-// 地图：0=草地 1=墙 2=水 3=路 4=屋顶 5=木桩 6=树 7=建筑入口 8=石
-const MAP = [
- [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
- [1,0,0,0,4,4,4,0,0,0,0,6,0,0,1],
- [1,0,0,0,4,4,4,0,0,0,0,0,0,0,1],
- [1,0,0,0,0,0,0,0,0,3,0,0,0,0,1],
- [1,6,0,0,7,0,0,0,0,3,0,0,0,6,1],
- [1,0,0,0,0,0,0,0,0,3,0,5,5,5,1],
- [1,0,0,0,0,0,0,0,0,0,0,5,5,5,1],
- [1,0,0,0,0,0,7,0,0,0,0,0,0,0,1],
- [1,0,0,3,3,3,3,3,3,3,0,0,0,0,1],
- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
- [1,0,0,0,0,0,0,0,0,0,0,0,6,0,1],
- [1,6,0,0,0,7,0,0,0,0,0,0,0,0,1],
- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
- [1,0,0,2,2,2,2,0,0,0,0,0,0,0,1],
- [1,0,0,2,2,2,2,0,0,7,0,0,0,0,1],
- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
- [1,0,0,0,0,0,0,0,0,0,0,0,0,6,1],
- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
- [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-];
+// ============ 相机 ============
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(15, 12, 20);
+camera.lookAt(0, 0, 0);
 
-// 颜色表
-const C = ['#8aba6a','#6b5a4a','#5a8ab5','#c0a060','#8b4513','#a07030','#3a7a2a','#c07840','#888'];
+// ============ 渲染器 ============
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+document.body.insertBefore(renderer.domElement, document.body.firstChild);
 
-// ============ 游戏状态 ============
-let px=7, py=10, keys={}, touchX=0, touchY=0, touchActive=false;
-const SPEED=2.5; let frame=0;
+// ============ 光照 ============
+const ambientLight = new THREE.AmbientLight(0x404060, 0.4);
+scene.add(ambientLight);
 
-const canvas = document.getElementById('cv');
-const ctx = canvas.getContext('2d');
-canvas.width = W; canvas.height = H;
+const sunLight = new THREE.DirectionalLight(0xffe8c0, 1.2);
+sunLight.position.set(30, 40, 20);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 1024;
+sunLight.shadow.mapSize.height = 1024;
+sunLight.shadow.camera.near = 0.5;
+sunLight.shadow.camera.far = 100;
+sunLight.shadow.camera.left = -30;
+sunLight.shadow.camera.right = 30;
+sunLight.shadow.camera.top = 30;
+sunLight.shadow.camera.bottom = -30;
+scene.add(sunLight);
 
+const fillLight = new THREE.DirectionalLight(0x8888ff, 0.3);
+fillLight.position.set(-20, 10, -10);
+scene.add(fillLight);
+
+// ============ 地形 ============
+const groundGeo = new THREE.PlaneGeometry(60, 60);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x7a9a5a,
+  roughness: 0.9,
+  metalness: 0
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI/2;
+ground.position.y = -0.1;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// 草地装饰（随机小方块模拟草地）
+for(let i=0;i<300;i++){
+  const blade = new THREE.Mesh(
+    new THREE.BoxGeometry(0.05, 0.15 + Math.random()*0.2, 0.05),
+    new THREE.MeshStandardMaterial({color: new THREE.Color().setHSL(0.28+Math.random()*0.06, 0.5, 0.3+Math.random()*0.15)})
+  );
+  const angle = Math.random()*Math.PI*2;
+  const dist = 3 + Math.random()*27;
+  blade.position.set(Math.cos(angle)*dist, 0.05, Math.sin(angle)*dist);
+  blade.castShadow = true;
+  scene.add(blade);
+}
+
+// ============ 树 ============
+function createTree(x, z, scale=1){
+  const group = new THREE.Group();
+  // 树干
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.2*scale, 0.3*scale, 1.5*scale, 6),
+    new THREE.MeshStandardMaterial({color: 0x5a3a1a, roughness: 0.9})
+  );
+  trunk.position.y = 0.75*scale;
+  trunk.castShadow = true;
+  group.add(trunk);
+  // 树冠（3层球体）
+  const colors = [0x3a7a2a, 0x4a8a3a, 0x5a9a4a];
+  for(let i=0;i<3;i++){
+    const crown = new THREE.Mesh(
+      new THREE.SphereGeometry((1.2-i*0.25)*scale, 6, 6),
+      new THREE.MeshStandardMaterial({color: colors[i], roughness: 0.8})
+    );
+    crown.position.set(
+      (Math.random()-0.5)*0.5*scale,
+      1.5*scale + i*0.4*scale,
+      (Math.random()-0.5)*0.5*scale
+    );
+    crown.castShadow = true;
+    group.add(crown);
+  }
+  group.position.set(x, 0, z);
+  return group;
+}
+
+// 小树林
+const trees = [];
+const treePositions = [];
+for(let i=0;i<25;i++){
+  const angle = Math.random()*Math.PI*2;
+  const dist = 6 + Math.random()*20;
+  const x = Math.cos(angle)*dist, z = Math.sin(angle)*dist;
+  const scale = 0.8 + Math.random()*0.6;
+  const tree = createTree(x, z, scale);
+  scene.add(tree);
+  trees.push(tree);
+  treePositions.push({x,z});
+}
+
+// ============ 建筑（古风小屋） ============
+function createHouse(x, z){
+  const group = new THREE.Group();
+  // 墙
+  const wall = new THREE.Mesh(
+    new THREE.BoxGeometry(3, 1.8, 3),
+    new THREE.MeshStandardMaterial({color: 0x8a6a3a, roughness: 0.9})
+  );
+  wall.position.y = 0.9;
+  wall.castShadow = true;
+  wall.receiveShadow = true;
+  group.add(wall);
+  // 屋顶
+  const roof = new THREE.Mesh(
+    new THREE.ConeGeometry(2.4, 0.8, 4),
+    new THREE.MeshStandardMaterial({color: 0x6a3a1a, roughness: 0.8})
+  );
+  roof.position.y = 2.2;
+  roof.rotation.y = Math.PI/4;
+  roof.castShadow = true;
+  group.add(roof);
+  // 门
+  const door = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.6, 1.2),
+    new THREE.MeshStandardMaterial({color: 0x4a2a0a})
+  );
+  door.position.set(0, 0.6, 1.51);
+  group.add(door);
+  group.position.set(x, 0, z);
+  return group;
+}
+
+const houses = [];
+for(let i=0;i<5;i++){
+  const angle = Math.random()*Math.PI*2;
+  const dist = 8 + Math.random()*12;
+  const x = Math.cos(angle)*dist, z = Math.sin(angle)*dist;
+  const house = createHouse(x, z);
+  scene.add(house);
+  houses.push(house);
+}
+
+// ============ 主角 ============
+function createPlayer(){
+  const group = new THREE.Group();
+  // 身体
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.4, 0.4, 1.0, 8),
+    new THREE.MeshStandardMaterial({color: 0x4a7a5a, roughness: 0.7})
+  );
+  body.position.y = 0.5;
+  body.castShadow = true;
+  group.add(body);
+  // 头
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3, 8, 8),
+    new THREE.MeshStandardMaterial({color: 0xe8c080, roughness: 0.6})
+  );
+  head.position.y = 1.1;
+  head.castShadow = true;
+  group.add(head);
+  // 剑
+  const sword = new THREE.Mesh(
+    new THREE.BoxGeometry(0.05, 0.6, 0.02),
+    new THREE.MeshStandardMaterial({color: 0xc0c0c0, metalness: 0.8, roughness: 0.3})
+  );
+  sword.position.set(0.4, 0.5, 0);
+  group.add(sword);
+  // 剑柄
+  const handle = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.15, 0.04),
+    new THREE.MeshStandardMaterial({color: 0x4a2a0a, roughness: 0.9})
+  );
+  handle.position.set(0.4, 0.15, 0);
+  group.add(handle);
+  // 腰带
+  const belt = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.42, 0.42, 0.06, 8),
+    new THREE.MeshStandardMaterial({color: 0x8b4513, roughness: 0.8})
+  );
+  belt.position.y = 0.3;
+  group.add(belt);
+
+  return group;
+}
+
+const player = createPlayer();
+player.position.set(0, 0, 0);
+scene.add(player);
+
+// ============ 移动控制 ============
+const keys = {};
+let targetX = 0, targetZ = 0;
+let playerAngle = 0;
+
+document.addEventListener('keydown', e=>{
+  keys[e.key] = true;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+});
+document.addEventListener('keyup', e=>{keys[e.key]=false;});
+
+// 摇杆
 const jDiv = document.getElementById('joystick');
 const knob = document.getElementById('knob');
-const atkBtn = document.getElementById('btn-atk');
+let jActive=false, jId=null, jDx=0, jDy=0;
 
-// HUD
-let power=0, cult=0, day=1;
-
-// ============ 碰撞检测 ============
-function isWalkable(x,y){
- const col=Math.floor(x/TSZ), row=Math.floor(y/TSZ);
- if(col<0||col>=COLS||row<0||row>=ROWS) return false;
- return [0,3,7].includes(MAP[row][col]);
-}
-
-function canMove(x,y){
- return isWalkable(x+4,y+4) && isWalkable(x+TSZ-5,y+4)
-     && isWalkable(x+4,y+TSZ-5) && isWalkable(x+TSZ-5,y+TSZ-5);
-}
-
-// ============ 摇杆 ============
-let jRadius=50, jActive=false, jId=null;
-jDiv.addEventListener('pointerdown',e=>{
- jActive=true; jId=e.pointerId; jDiv.setPointerCapture(e.pointerId);
- updateJoystick(e);
+jDiv.addEventListener('pointerdown', e=>{
+  jActive=true; jId=e.pointerId; jDiv.setPointerCapture(e.pointerId);
+  updateJoy(e);
 });
-jDiv.addEventListener('pointermove',e=>{if(jActive&&e.pointerId===jId)updateJoystick(e);});
-jDiv.addEventListener('pointerup',e=>{if(e.pointerId===jId){jActive=false;jId=null;touchX=0;touchY=0;knob.style.transform='translate(-50%,-50%)';}});
-jDiv.addEventListener('pointercancel',e=>{if(e.pointerId===jId){jActive=false;jId=null;touchX=0;touchY=0;knob.style.transform='translate(-50%,-50%)';}});
+jDiv.addEventListener('pointermove', e=>{if(jActive&&e.pointerId===jId)updateJoy(e);});
+jDiv.addEventListener('pointerup', e=>{if(e.pointerId===jId){jActive=false;jId=null;jDx=0;jDy=0;knob.style.transform='translate(-50%,-50%)';}});
+jDiv.addEventListener('pointercancel', e=>{if(e.pointerId===jId){jActive=false;jId=null;jDx=0;jDy=0;knob.style.transform='translate(-50%,-50%)';}});
 
-function updateJoystick(e){
- const rect=jDiv.getBoundingClientRect();
- const cx=rect.width/2, cy=rect.height/2;
- let dx=e.clientX-rect.left-cx, dy=e.clientY-rect.top-cy;
- const dist=Math.sqrt(dx*dx+dy*dy);
- if(dist>jRadius){dx=dx/dist*jRadius; dy=dy/dist*jRadius;}
- touchX=dx/jRadius; touchY=dy/jRadius;
- knob.style.transform=`translate(${dx-22}px,${dy-22}px)`;
+function updateJoy(e){
+  const rect=jDiv.getBoundingClientRect();
+  const cx=rect.width/2, cy=rect.height/2;
+  let dx=e.clientX-rect.left-cx, dy=e.clientY-rect.top-cy;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  const r=55;
+  if(dist>r){dx=dx/dist*r; dy=dy/dist*r;}
+  jDx=dx/r; jDy=dy/r;
+  knob.style.transform=`translate(${dx-25}px,${dy-25}px)`;
 }
 
-// ============ 渲染 ============
-function draw(){
- ctx.clearRect(0,0,W,H);
- // 地图
- for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
-  const t=MAP[r][c];
-  ctx.fillStyle=C[t];
-  ctx.fillRect(c*TSZ,r*TSZ,TSZ,TSZ);
-  // 草地加纹理
-  if(t===0){
-   ctx.fillStyle='rgba(120,180,90,0.15)';
-   const s=Math.sin(c*3.7+r*2.3)*0.5;
-   ctx.fillRect(c*TSZ+8+s*3,r*TSZ+8+s*2,4,4);
-  }
-  if(t===6){
-   ctx.fillStyle='#2a6a1a';
-   ctx.beginPath();ctx.arc(c*TSZ+16,r*TSZ+12,6,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle='#1a4a0a';
-   ctx.beginPath();ctx.arc(c*TSZ+18,r*TSZ+10,4,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle='#5a3a1a';
-   ctx.fillRect(c*TSZ+14,r*TSZ+16,4,8);
-  }
-  if(t===4){
-   ctx.fillStyle='#a06030';
-   ctx.beginPath();ctx.moveTo(c*TSZ,r*TSZ+TSZ);ctx.lineTo(c*TSZ+TSZ/2,r*TSZ);ctx.lineTo(c*TSZ+TSZ,r*TSZ+TSZ);ctx.fill();
-  }
- }
- // 主角
- const cx=px+TSZ/2, cy=py+TSZ/2-2;
- ctx.shadowColor='rgba(0,0,0,0.3)';ctx.shadowBlur=4;
- // 身体
- ctx.fillStyle='#e8d0a0';
- ctx.beginPath();ctx.arc(cx,cy-2,10,0,Math.PI*2);ctx.fill();
- // 衣服
- ctx.fillStyle='#4a7a5a';
- ctx.fillRect(cx-8,cy-2,16,14);
- // 头
- ctx.fillStyle='#e8c080';
- ctx.beginPath();ctx.arc(cx,cy-12,7,0,Math.PI*2);ctx.fill();
- // 剑
- ctx.fillStyle='#c0c0c0';
- const sw=Math.sin(frame*0.1)*8;
- ctx.save();ctx.translate(cx+10,cy-8);ctx.rotate(0.3+sw*0.02);
- ctx.fillRect(0,-2,18,3);ctx.restore();
- ctx.shadowBlur=0;
- // 名字
- ctx.fillStyle='#fff';ctx.font='12px KaiTi';ctx.textAlign='center';
- ctx.fillText('侠',cx,py-16);
+// ============ 游戏循环 ============
+const SPEED = 6;
+const TURN_SPEED = 0.08;
 
- frame++;
- requestAnimationFrame(draw);
-}
-
-// ============ 更新 ============
 function update(){
- let dx=0, dy=0;
- if(keys['ArrowUp']||keys['w']||keys['W']||touchY<-0.3) dy=-1;
- if(keys['ArrowDown']||keys['s']||keys['S']||touchY>0.3) dy=1;
- if(keys['ArrowLeft']||keys['a']||keys['A']||touchX<-0.3) dx=-1;
- if(keys['ArrowRight']||keys['d']||keys['D']||touchX>0.3) dx=1;
+  let dx=0, dy=0;
+  if(keys['ArrowUp']||keys['w']||keys['W']||jDy<-0.3) dy=-1;
+  if(keys['ArrowDown']||keys['s']||keys['S']||jDy>0.3) dy=1;
+  if(keys['ArrowLeft']||keys['a']||keys['A']||jDx<-0.3) dx=-1;
+  if(keys['ArrowRight']||keys['d']||keys['D']||jDx>0.3) dx=1;
 
- if(dx!==0||dy!==0){
-  const len=Math.sqrt(dx*dx+dy*dy);
-  const nx=px+dx/len*SPEED, ny=py+dy/len*SPEED;
-  if(canMove(nx,py)) px=nx;
-  if(canMove(px,ny)) py=ny;
- }
- setTimeout(update,1000/60);
+  if(dx!==0||dy!==0){
+    const len=Math.sqrt(dx*dx+dy*dy);
+    targetX = player.position.x + dx/len * SPEED * 0.016;
+    targetZ = player.position.z + dy/len * SPEED * 0.016;
+
+    // 约束在场景内
+    targetX = Math.max(-28, Math.min(28, targetX));
+    targetZ = Math.max(-28, Math.min(28, targetZ));
+
+    player.position.x = targetX;
+    player.position.z = targetZ;
+
+    // 朝向移动方向
+    const targetAngle = Math.atan2(dx, dy);
+    let diff = targetAngle - playerAngle;
+    while(diff > Math.PI) diff -= Math.PI*2;
+    while(diff < -Math.PI) diff += Math.PI*2;
+    playerAngle += diff * 0.15;
+    player.rotation.y = playerAngle;
+
+    // 走动时轻微上下浮动
+    player.position.y = Math.sin(Date.now() * 0.008) * 0.03;
+  } else {
+    player.position.y = 0;
+  }
+
+  // 相机跟随
+  const camDist = 18;
+  const camHeight = 10;
+  const lookAhead = 3;
+  const px = player.position.x;
+  const pz = player.position.z;
+  camera.position.x += (px + camDist * 0.3 - camera.position.x) * 0.05;
+  camera.position.z += (pz + camDist * 0.7 - camera.position.z) * 0.05;
+  camera.position.y += (camHeight - camera.position.y) * 0.05;
+  camera.lookAt(px, 0, pz + lookAhead);
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(update);
 }
 
-// ============ 键盘 ============
-document.addEventListener('keydown',e=>{keys[e.key]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();});
-document.addEventListener('keyup',e=>{keys[e.key]=false;});
-
-// ============ 攻击按钮 ============
-atkBtn.addEventListener('click',()=>{
- power+=10; cult+=5; day+=1;
- document.getElementById('sPower').textContent=power;
- document.getElementById('sCult').textContent=cult;
- document.getElementById('sDay').textContent=day;
+// ============ 窗口缩放 ============
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 // ============ 启动 ============
-draw(); update();
+document.getElementById('loading').style.display = 'none';
+update();
 </script>
 </body>
 </html>
