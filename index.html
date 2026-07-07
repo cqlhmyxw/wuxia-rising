@@ -1,278 +1,106 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
+<!DOCTYPE html><html lang="zh-CN"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>武侠·崛起 3D</title>
 <style>
 *{margin:0;padding:0;border:0}
 body{background:#1a120e;overflow:hidden;font-family:'KaiTi','STKaiti',serif}
-#loading{position:fixed;top:0;left:0;width:100%;height:100%;background:#1a120e;color:#e8d5a0;display:flex;justify-content:center;align-items:center;font-size:20px;z-index:100}
+#loading{position:fixed;top:0;left:0;width:100%;height:100%;background:#1a120e;color:#e8d5a0;display:flex;justify-content:center;align-items:center;font-size:20px;z-index:100;flex-direction:column;gap:6px}
+#loading .sub{font-size:12px;color:#a08060}
 canvas{display:block;width:100vw;height:100dvh}
 </style>
 </head>
 <body>
-<div id="loading">加载3D资源中...</div>
+<div id="loading">3D资源加载中...<div class="sub">首次加载约5-10秒</div></div>
 
-<!-- Three.js ESM方式加载，不会阻塞页面 -->
-<!-- 不需要CSS摇杆，用touch事件实现点击移动 -->
-<script type="importmap">
-{
-  "imports": {
-    "three": "./lib/three.module.js",
-    "three/addons/": "./lib/"
-  }
+<script src="./lib/three.min.js"></script>
+<script src="./lib/OrbitControls_old.js"></script>
+<script>
+var scene=new THREE.Scene(); scene.background=new THREE.Color(0x87CEEB);
+var camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.1,200); camera.position.set(10,8,15);
+var renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(window.innerWidth,window.innerHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2)); renderer.shadowMap.enabled=true;
+document.body.insertBefore(renderer.domElement,document.body.firstChild);
+document.getElementById('loading').style.display='none';
+
+var controls=new THREE.OrbitControls(camera,renderer.domElement); controls.target.set(0,0,0); controls.enableDamping=true; controls.update();
+
+var ambient=new THREE.AmbientLight(0x404060,0.5); scene.add(ambient);
+var sun=new THREE.DirectionalLight(0xffe8c0,1.2); sun.position.set(20,30,10); sun.castShadow=true; scene.add(sun);
+var fill=new THREE.DirectionalLight(0x8888ff,0.3); fill.position.set(-10,5,-5); scene.add(fill);
+
+var ground=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0x7a9a5a,roughness:0.9}));
+ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+var obstacles=[];
+
+function createTree(x,z){
+  var g=new THREE.Group();
+  var trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,1.5,6),new THREE.MeshStandardMaterial({color:0x5a3a1a,roughness:0.9}));
+  trunk.position.y=0.75; trunk.castShadow=true; g.add(trunk);
+  var crown=new THREE.Mesh(new THREE.SphereGeometry(1.0,6,6),new THREE.MeshStandardMaterial({color:0x3a7a2a,roughness:0.8}));
+  crown.position.y=1.8; crown.castShadow=true; g.add(crown);
+  g.position.set(x,0,z); obstacles.push({x,z,r:1.0}); return g;
 }
-</script>
+for(var i=0;i<15;i++){var a=Math.random()*Math.PI*2,d=5+Math.random()*14;scene.add(createTree(Math.cos(a)*d,Math.sin(a)*d));}
 
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
-// Three.js已加载，隐藏loading
-document.getElementById('loading').style.display = 'none';
-
-// 场景
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87CEEB);
-
-// 相机
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 200);
-camera.position.set(10, 8, 15);
-
-// 渲染器
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-document.body.insertBefore(renderer.domElement, document.body.firstChild);
-
-// 控制器
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 0, 0);
-controls.enableDamping = true;
-controls.update();
-
-// 光照
-const ambient = new THREE.AmbientLight(0x404060, 0.5);
-scene.add(ambient);
-const sun = new THREE.DirectionalLight(0xffe8c0, 1.2);
-sun.position.set(20, 30, 10);
-sun.castShadow = true;
-scene.add(sun);
-const fill = new THREE.DirectionalLight(0x8888ff, 0.3);
-fill.position.set(-10, 5, -5);
-scene.add(fill);
-
-// 地面
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(40, 40),
-  new THREE.MeshStandardMaterial({ color: 0x7a9a5a, roughness: 0.9 })
-);
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
-
-// 收集障碍物位置（用于碰撞检测）
-const obstacles = [];
-
-// 树
-function createTree(x, z) {
-  const g = new THREE.Group();
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.2, 0.3, 1.5, 6),
-    new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9 })
-  );
-  trunk.position.y = 0.75;
-  trunk.castShadow = true;
-  g.add(trunk);
-  const crown = new THREE.Mesh(
-    new THREE.SphereGeometry(1.0, 6, 6),
-    new THREE.MeshStandardMaterial({ color: 0x3a7a2a, roughness: 0.8 })
-  );
-  crown.position.y = 1.8;
-  crown.castShadow = true;
-  g.add(crown);
-  g.position.set(x, 0, z);
-  obstacles.push({ x, z, r: 1.0 }); // 树冠碰撞半径（覆盖整棵树）
-  return g;
+function createHouse(x,z){
+  var g=new THREE.Group();
+  var wall=new THREE.Mesh(new THREE.BoxGeometry(2.5,1.5,2.5),new THREE.MeshStandardMaterial({color:0x8a6a3a,roughness:0.9}));
+  wall.position.y=0.75; wall.castShadow=true; g.add(wall);
+  var roof=new THREE.Mesh(new THREE.ConeGeometry(2.0,0.7,4),new THREE.MeshStandardMaterial({color:0x6a3a1a,roughness:0.8}));
+  roof.position.y=1.7; roof.rotation.y=Math.PI/4; g.add(roof);
+  g.position.set(x,0,z); obstacles.push({x,z,r:1.3}); return g;
 }
-for (let i = 0; i < 15; i++) {
-  const a = Math.random() * Math.PI * 2;
-  const d = 5 + Math.random() * 14;
-  scene.add(createTree(Math.cos(a) * d, Math.sin(a) * d));
-}
+for(var i=0;i<3;i++){var a=Math.random()*Math.PI*2,d=6+Math.random()*8;scene.add(createHouse(Math.cos(a)*d,Math.sin(a)*d));}
 
-// 房子
-function createHouse(x, z) {
-  const g = new THREE.Group();
-  const wall = new THREE.Mesh(
-    new THREE.BoxGeometry(2.5, 1.5, 2.5),
-    new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.9 })
-  );
-  wall.position.y = 0.75;
-  wall.castShadow = true;
-  g.add(wall);
-  const roof = new THREE.Mesh(
-    new THREE.ConeGeometry(2.0, 0.7, 4),
-    new THREE.MeshStandardMaterial({ color: 0x6a3a1a, roughness: 0.8 })
-  );
-  roof.position.y = 1.7;
-  roof.rotation.y = Math.PI / 4;
-  g.add(roof);
-  g.position.set(x, 0, z);
-  obstacles.push({ x, z, r: 1.3 }); // 房子碰撞半径
-  return g;
-}
-for (let i = 0; i < 3; i++) {
-  const a = Math.random() * Math.PI * 2;
-  const d = 6 + Math.random() * 8;
-  scene.add(createHouse(Math.cos(a) * d, Math.sin(a) * d));
-}
+var player=new THREE.Group();
+var body=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.45,0.9,8),new THREE.MeshStandardMaterial({color:0x3a6a4a,roughness:0.7}));
+body.position.y=0.7; body.castShadow=true; player.add(body);
+var head=new THREE.Mesh(new THREE.SphereGeometry(0.28,10,10),new THREE.MeshStandardMaterial({color:0xe8c080,roughness:0.5}));
+head.position.y=1.2; head.castShadow=true; player.add(head);
+var bun=new THREE.Mesh(new THREE.SphereGeometry(0.12,6,6),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.9}));
+bun.position.set(0,1.42,0.08); player.add(bun);
+var sword=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.5,0.015),new THREE.MeshStandardMaterial({color:0xd0d0d0,metalness:0.8,roughness:0.2}));
+sword.position.set(0.45,0.55,0); player.add(sword);
+var belt=new THREE.Mesh(new THREE.TorusGeometry(0.25,0.04,6,12),new THREE.MeshStandardMaterial({color:0x8b4513,roughness:0.8}));
+belt.position.y=0.5; belt.rotation.x=Math.PI/2; player.add(belt);
+player.position.set(0,0,0); scene.add(player);
 
-// 主角
-const player = new THREE.Group();
-const body = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.35, 0.45, 0.9, 8),
-  new THREE.MeshStandardMaterial({ color: 0x3a6a4a, roughness: 0.7 })
-);
-body.position.y = 0.7;
-body.castShadow = true;
-player.add(body);
+var keys={}; var playerAngle=0; var touchDx=0,touchDy=0;
+document.addEventListener('keydown',function(e){keys[e.key]=true;if('ArrowUp,ArrowDown,ArrowLeft,ArrowRight'.indexOf(e.key)>-1)e.preventDefault()});
+document.addEventListener('keyup',function(e){keys[e.key]=false});
 
-const head = new THREE.Mesh(
-  new THREE.SphereGeometry(0.28, 10, 10),
-  new THREE.MeshStandardMaterial({ color: 0xe8c080, roughness: 0.5 })
-);
-head.position.y = 1.2;
-head.castShadow = true;
-player.add(head);
+canvas.addEventListener('touchstart',function(e){var t=e.touches[0];if(t&&t.clientX<window.innerWidth/2){touchDx=(t.clientX-window.innerWidth/4)/(window.innerWidth/4);touchDy=(t.clientY-window.innerHeight/2)/(window.innerHeight/2);}},{passive:true});
+canvas.addEventListener('touchmove',function(e){var t=e.touches[0];if(t&&t.clientX<window.innerWidth/2){touchDx=(t.clientX-window.innerWidth/4)/(window.innerWidth/4);touchDy=(t.clientY-window.innerHeight/2)/(window.innerHeight/2);touchDx=Math.max(-1,Math.min(1,touchDx));touchDy=Math.max(-1,Math.min(1,touchDy));}},{passive:true});
+canvas.addEventListener('touchend',function(){touchDx=0;touchDy=0;},{passive:true});
 
-const bun = new THREE.Mesh(
-  new THREE.SphereGeometry(0.12, 6, 6),
-  new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 })
-);
-bun.position.set(0, 1.42, 0.08);
-player.add(bun);
+window.addEventListener('resize',function(){camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
 
-const sword = new THREE.Mesh(
-  new THREE.BoxGeometry(0.04, 0.5, 0.015),
-  new THREE.MeshStandardMaterial({ color: 0xd0d0d0, metalness: 0.8, roughness: 0.2 })
-);
-sword.position.set(0.45, 0.55, 0);
-player.add(sword);
-
-const belt = new THREE.Mesh(
-  new THREE.TorusGeometry(0.25, 0.04, 6, 12),
-  new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.8 })
-);
-belt.position.y = 0.5;
-belt.rotation.x = Math.PI / 2;
-player.add(belt);
-
-player.position.set(0, 0, 0);
-scene.add(player);
-
-// 键盘控制
-const keys = {};
-let playerAngle = 0;
-let touchDx = 0, touchDy = 0; // 触摸/摇杆方向
-
-document.addEventListener('keydown', e => { keys[e.key] = true; if ('ArrowUp,ArrowDown,ArrowLeft,ArrowRight'.includes(e.key)) e.preventDefault(); });
-document.addEventListener('keyup', e => { keys[e.key] = false; });
-
-// 触摸控制（虚拟摇杆）——触摸屏幕左侧区域控制移动
-canvas.addEventListener('touchstart', handleTouch, { passive: true });
-canvas.addEventListener('touchmove', handleTouch, { passive: true });
-canvas.addEventListener('touchend', () => { touchDx = 0; touchDy = 0; }, { passive: true });
-
-function handleTouch(e) {
-  const touch = e.touches[0];
-  if (!touch) return;
-  // 左半屏为摇杆区
-  if (touch.clientX < window.innerWidth / 2) {
-    // 映射到 -1 ~ 1
-    touchDx = (touch.clientX - window.innerWidth / 4) / (window.innerWidth / 4);
-    touchDy = (touch.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
-    // 限幅
-    touchDx = Math.max(-1, Math.min(1, touchDx));
-    touchDy = Math.max(-1, Math.min(1, touchDy));
-  }
-}
-
-// 窗口自适应
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// 游戏循环
-function animate() {
-  let dx = 0, dy = 0;
-  if (keys.ArrowUp || keys.w || keys.W || touchDy < -0.3) dy = -1;
-  if (keys.ArrowDown || keys.s || keys.S || touchDy > 0.3) dy = 1;
-  if (keys.ArrowLeft || keys.a || keys.A || touchDx < -0.3) dx = -1;
-  if (keys.ArrowRight || keys.d || keys.D || touchDx > 0.3) dx = 1;
-
-  if (dx || dy) {
-    // 获取相机的前方向和右方向（在水平面上，忽略倾斜）
-    const camDir = new THREE.Vector3();
-    camera.getWorldDirection(camDir);
-    camDir.y = 0;
-    camDir.normalize();
-    
-    // 右方向 = 前方向 绕Y轴旋转90度
-    const camRight = new THREE.Vector3();
-    camRight.crossVectors(camDir, new THREE.Vector3(0, 1, 0)).normalize();
-    
-    // 将dx/dy从相机方向映射到世界坐标
-    const moveDir = new THREE.Vector3()
-      .addScaledVector(camRight, dx)
-      .addScaledVector(camDir, -dy);  // dy负号因为3D坐标Z正方向对应"向下"
-    
-    if (moveDir.length() > 0) {
-      moveDir.normalize();
-      // 碰撞检测：X轴和Z轴分别检测，实现滑墙效果
-      const speed = 5 * 0.016;
-      const pR = 0.4; // 人物半径
-      
-      // X轴移动
-      const nx = player.position.x + moveDir.x * speed;
-      let blockedX = false;
-      for (const ob of obstacles) {
-        if (Math.sqrt((nx - ob.x) ** 2 + (player.position.z - ob.z) ** 2) < ob.r + pR) {
-          blockedX = true;
-          break;
-        }
-      }
-      if (!blockedX) player.position.x = Math.max(-18, Math.min(18, nx));
-      
-      // Z轴移动
-      const nz = player.position.z + moveDir.z * speed;
-      let blockedZ = false;
-      for (const ob of obstacles) {
-        if (Math.sqrt((player.position.x - ob.x) ** 2 + (nz - ob.z) ** 2) < ob.r + pR) {
-          blockedZ = true;
-          break;
-        }
-      }
-      if (!blockedZ) player.position.z = Math.max(-18, Math.min(18, nz));
-      
-      // 人物朝向移动方向
-      const ta = Math.atan2(moveDir.x, moveDir.z);
-      let diff = ta - playerAngle;
-      while (diff > Math.PI) diff -= Math.PI * 2;
-      while (diff < -Math.PI) diff += Math.PI * 2;
-      playerAngle += diff * 0.15;
-      player.rotation.y = playerAngle;
+function animate(){
+  var dx=0,dy=0;
+  if(keys.ArrowUp||keys.w||keys.W||touchDy<-0.3)dy=-1;
+  if(keys.ArrowDown||keys.s||keys.S||touchDy>0.3)dy=1;
+  if(keys.ArrowLeft||keys.a||keys.A||touchDx<-0.3)dx=-1;
+  if(keys.ArrowRight||keys.d||keys.D||touchDx>0.3)dx=1;
+  if(dx||dy){
+    var camDir=new THREE.Vector3();camera.getWorldDirection(camDir);camDir.y=0;camDir.normalize();
+    var camRight=new THREE.Vector3();camRight.crossVectors(camDir,new THREE.Vector3(0,1,0)).normalize();
+    var moveDir=new THREE.Vector3().addScaledVector(camRight,dx).addScaledVector(camDir,-dy);
+    if(moveDir.length()>0){
+      moveDir.normalize();var speed=5*0.016,pR=0.4;
+      var nx=player.position.x+moveDir.x*speed;var blockedX=false;
+      for(var k=0;k<obstacles.length;k++){var ob=obstacles[k];if(Math.sqrt((nx-ob.x)*(nx-ob.x)+(player.position.z-ob.z)*(player.position.z-ob.z))<ob.r+pR){blockedX=true;break;}}
+      if(!blockedX)player.position.x=Math.max(-18,Math.min(18,nx));
+      var nz=player.position.z+moveDir.z*speed;var blockedZ=false;
+      for(var k=0;k<obstacles.length;k++){var ob=obstacles[k];if(Math.sqrt((player.position.x-ob.x)*(player.position.x-ob.x)+(nz-ob.z)*(nz-ob.z))<ob.r+pR){blockedZ=true;break;}}
+      if(!blockedZ)player.position.z=Math.max(-18,Math.min(18,nz));
+      var ta=Math.atan2(moveDir.x,moveDir.z);var diff=ta-playerAngle;
+      while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;
+      playerAngle+=diff*0.15;player.rotation.y=playerAngle;
     }
   }
-
-  controls.target.set(player.position.x, 0, player.position.z);
-  controls.update();
-  renderer.render(scene, camera);
-  requestAnimationFrame(animate);
+  controls.target.set(player.position.x,0,player.position.z);controls.update();
+  renderer.render(scene,camera);requestAnimationFrame(animate);
 }
 animate();
 </script>
