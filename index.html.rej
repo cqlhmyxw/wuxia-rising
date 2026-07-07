@@ -1,0 +1,11 @@
+--- index.html
++++ index.html
+@@ -18,7 +18,7 @@
+ </head>
+ <body>
+-<div id="loading">加载3D场景中...</div>
++<div id="loading">加载3D场景中...<br><small>首次加载约10秒</small></div>
+ <div id="hud"><span class="name">武侠·崛起 3D</span><span class="stat">方向键/WASD移动 · 拖拽旋转 · 空格进屋</span></div>
+ 
+ 
+ 
