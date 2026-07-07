@@ -1,109 +1,212 @@
-<!DOCTYPE html><html lang="zh-CN"><head>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>武侠·崛起</title>
+<title>武侠·崛起 3D</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#1a120e;overflow:hidden;touch-action:none;font-family:'KaiTi','STKaiti',serif}
+*{margin:0;padding:0;border:0}
+body{background:#1a120e;overflow:hidden;font-family:'KaiTi','STKaiti',serif}
+#loading{position:fixed;top:0;left:0;width:100%;height:100%;background:#1a120e;color:#e8d5a0;display:flex;justify-content:center;align-items:center;font-size:20px;z-index:100}
 canvas{display:block;width:100vw;height:100dvh}
-#loading{position:fixed;top:0;left:0;width:100%;height:100%;background:#1a120e;color:#e8d5a0;display:flex;justify-content:center;align-items:center;font-size:20px;z-index:100;flex-direction:column;gap:10px}
-#loading small{font-size:12px;color:#a08060}
-#hud{position:fixed;top:0;left:0;right:0;height:40px;background:linear-gradient(180deg,rgba(30,18,10,.92),rgba(30,18,10,.7));display:flex;align-items:center;padding:0 12px;color:#e8d5a0;font-size:14px;z-index:10;gap:10px;pointer-events:none}
-#joystick{position:fixed;left:20px;bottom:30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.2);z-index:20;display:none;touch-action:none}
-#joystick .knob{position:absolute;top:50%;left:50%;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.35);transform:translate(-50%,-50%);pointer-events:none}
-@media(hover:none)and(pointer:coarse){#joystick{display:block}}
 </style>
 </head>
 <body>
-<div id="loading">加载中...<small>首次需加载 external 库</small></div>
-<div id="hud"><span>武侠·崛起</span></div>
-<div id="joystick"><div class="knob" id="knob"></div></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script>
+<div id="loading">加载3D资源中...</div>
+
+<!-- Three.js ESM方式加载，不会阻塞页面 -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Three.js已加载，隐藏loading
 document.getElementById('loading').style.display = 'none';
 
-const scene=new THREE.Scene(); scene.background=new THREE.Color(0x87CEEB);
-const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.1,200); camera.position.set(15,12,20);
-const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(window.innerWidth,window.innerHeight);
-document.body.insertBefore(renderer.domElement,document.body.firstChild);
+// 场景
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
 
-const controls=new THREE.OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.target.set(0,0,0); controls.update();
+// 相机
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(10, 8, 15);
 
-renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+// 渲染器
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.body.insertBefore(renderer.domElement, document.body.firstChild);
 
-const ambient=new THREE.AmbientLight(0x404060,0.4); scene.add(ambient);
-const sun=new THREE.DirectionalLight(0xffe8c0,1.2); sun.position.set(30,40,20); sun.castShadow=true; scene.add(sun);
-const fill=new THREE.DirectionalLight(0x8888ff,0.3); fill.position.set(-20,10,-10); scene.add(fill);
+// 控制器
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+controls.enableDamping = true;
+controls.update();
 
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshStandardMaterial({color:0x7a9a5a,roughness:0.9}));
-ground.rotation.x=-Math.PI/2; ground.position.y=-0.1; ground.receiveShadow=true; scene.add(ground);
+// 光照
+const ambient = new THREE.AmbientLight(0x404060, 0.5);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xffe8c0, 1.2);
+sun.position.set(20, 30, 10);
+sun.castShadow = true;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x8888ff, 0.3);
+fill.position.set(-10, 5, -5);
+scene.add(fill);
 
-function createPlayer(){
-  const g=new THREE.Group();
-  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.45,0.9,8),new THREE.MeshStandardMaterial({color:0x3a6a4a,roughness:0.7}));
-  body.position.y=0.7; body.castShadow=true; g.add(body);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(0.28,10,10),new THREE.MeshStandardMaterial({color:0xe8c080,roughness:0.5}));
-  head.position.y=1.2; head.castShadow=true; g.add(head);
-  const bun=new THREE.Mesh(new THREE.SphereGeometry(0.12,6,6),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.9}));
-  bun.position.set(0,1.42,0.08); g.add(bun);
-  const lArm=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.09,0.4,6),new THREE.MeshStandardMaterial({color:0x3a6a4a,roughness:0.7}));
-  lArm.position.set(-0.38,0.8,0); lArm.rotation.z=0.15; lArm.castShadow=true; g.add(lArm);
-  const rArm=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.09,0.4,6),new THREE.MeshStandardMaterial({color:0x3a6a4a,roughness:0.7}));
-  rArm.position.set(0.38,0.8,0); rArm.rotation.z=-0.15; rArm.castShadow=true; g.add(rArm);
-  const sword=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.5,0.015),new THREE.MeshStandardMaterial({color:0xd0d0d0,metalness:0.8,roughness:0.2}));
-  sword.position.set(0.45,0.55,0); g.add(sword);
-  const sHandle=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.12,0.03),new THREE.MeshStandardMaterial({color:0x4a2a0a,roughness:0.9}));
-  sHandle.position.set(0.45,0.25,0); g.add(sHandle);
-  const belt=new THREE.Mesh(new THREE.TorusGeometry(0.25,0.04,6,12),new THREE.MeshStandardMaterial({color:0x8b4513,roughness:0.8}));
-  belt.position.y=0.5; belt.rotation.x=Math.PI/2; g.add(belt);
-  const skirt=new THREE.Mesh(new THREE.ConeGeometry(0.35,0.15,8),new THREE.MeshStandardMaterial({color:0x3a6a4a,roughness:0.7}));
-  skirt.position.y=0.25; g.add(skirt);
+// 地面
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 40),
+  new THREE.MeshStandardMaterial({ color: 0x7a9a5a, roughness: 0.9 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// 树
+function createTree(x, z) {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.2, 0.3, 1.5, 6),
+    new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9 })
+  );
+  trunk.position.y = 0.75;
+  trunk.castShadow = true;
+  g.add(trunk);
+  const crown = new THREE.Mesh(
+    new THREE.SphereGeometry(1.0, 6, 6),
+    new THREE.MeshStandardMaterial({ color: 0x3a7a2a, roughness: 0.8 })
+  );
+  crown.position.y = 1.8;
+  crown.castShadow = true;
+  g.add(crown);
+  g.position.set(x, 0, z);
   return g;
 }
-
-const player=createPlayer(); player.position.set(0,0,0); scene.add(player);
-
-const keys={}; let jDx=0,jDy=0; let playerAngle=0;
-document.addEventListener('keydown',e=>{keys[e.key]=true;if('ArrowUp,ArrowDown,ArrowLeft,ArrowRight, '.split(',').includes(e.key))e.preventDefault()});
-document.addEventListener('keyup',e=>{keys[e.key]=false});
-
-const jDiv=document.getElementById('joystick'),knob=document.getElementById('knob');
-let jActive=false,jId=null;
-jDiv.addEventListener('pointerdown',e=>{jActive=true;jId=e.pointerId;jDiv.setPointerCapture(e.pointerId);updateJoystick(e)});
-jDiv.addEventListener('pointermove',e=>{if(jActive&&e.pointerId===jId)updateJoystick(e)});
-jDiv.addEventListener('pointerup',e=>{if(e.pointerId===jId){jActive=false;jId=null;jDx=0;jDy=0;knob.style.transform='translate(-50%,-50%)'}});
-jDiv.addEventListener('pointercancel',e=>{if(e.pointerId===jId){jActive=false;jId=null;jDx=0;jDy=0;knob.style.transform='translate(-50%,-50%)'}});
-function updateJoystick(e){
-  const rect=jDiv.getBoundingClientRect(); const cx=rect.width/2,cy=rect.height/2;
-  let dx=e.clientX-rect.left-cx,dy=e.clientY-rect.top-cy;
-  const dist=Math.sqrt(dx*dx+dy*dy),r=55;
-  if(dist>r){dx=dx/dist*r;dy=dy/dist*r}
-  jDx=dx/r;jDy=dy/r;knob.style.transform=`translate(${dx-25}px,${dy-25}px)`;
+for (let i = 0; i < 15; i++) {
+  const a = Math.random() * Math.PI * 2;
+  const d = 5 + Math.random() * 14;
+  scene.add(createTree(Math.cos(a) * d, Math.sin(a) * d));
 }
 
-window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
+// 房子
+function createHouse(x, z) {
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(
+    new THREE.BoxGeometry(2.5, 1.5, 2.5),
+    new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.9 })
+  );
+  wall.position.y = 0.75;
+  wall.castShadow = true;
+  g.add(wall);
+  const roof = new THREE.Mesh(
+    new THREE.ConeGeometry(2.0, 0.7, 4),
+    new THREE.MeshStandardMaterial({ color: 0x6a3a1a, roughness: 0.8 })
+  );
+  roof.position.y = 1.7;
+  roof.rotation.y = Math.PI / 4;
+  g.add(roof);
+  g.position.set(x, 0, z);
+  return g;
+}
+for (let i = 0; i < 3; i++) {
+  const a = Math.random() * Math.PI * 2;
+  const d = 6 + Math.random() * 8;
+  scene.add(createHouse(Math.cos(a) * d, Math.sin(a) * d));
+}
 
-function update(){
-  let dx=0,dy=0;
-  if(keys.ArrowUp||keys.w||keys.W||jDy<-0.3)dy=-1;
-  if(keys.ArrowDown||keys.s||keys.S||jDy>0.3)dy=1;
-  if(keys.ArrowLeft||keys.a||keys.A||jDx<-0.3)dx=-1;
-  if(keys.ArrowRight||keys.d||keys.D||jDx>0.3)dx=1;
-  if(dx||dy){
-    const l=Math.sqrt(dx*dx+dy*dy);
-    const nx=player.position.x+dx/l*5*0.016,nz=player.position.z+dy/l*5*0.016;
-    player.position.x=Math.max(-28,Math.min(28,nx)); player.position.z=Math.max(-28,Math.min(28,nz));
-    const ta=Math.atan2(dx,dy); let diff=ta-playerAngle;
-    while(diff>Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2;
-    playerAngle+=diff*0.15; player.rotation.y=playerAngle;
-    player.position.y=Math.sin(Date.now()*0.008)*0.04;
-  }else{player.position.y=0}
-  controls.target.lerp(new THREE.Vector3(player.position.x,0,player.position.z),0.05);
+// 主角
+const player = new THREE.Group();
+const body = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.35, 0.45, 0.9, 8),
+  new THREE.MeshStandardMaterial({ color: 0x3a6a4a, roughness: 0.7 })
+);
+body.position.y = 0.7;
+body.castShadow = true;
+player.add(body);
+
+const head = new THREE.Mesh(
+  new THREE.SphereGeometry(0.28, 10, 10),
+  new THREE.MeshStandardMaterial({ color: 0xe8c080, roughness: 0.5 })
+);
+head.position.y = 1.2;
+head.castShadow = true;
+player.add(head);
+
+const bun = new THREE.Mesh(
+  new THREE.SphereGeometry(0.12, 6, 6),
+  new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 })
+);
+bun.position.set(0, 1.42, 0.08);
+player.add(bun);
+
+const sword = new THREE.Mesh(
+  new THREE.BoxGeometry(0.04, 0.5, 0.015),
+  new THREE.MeshStandardMaterial({ color: 0xd0d0d0, metalness: 0.8, roughness: 0.2 })
+);
+sword.position.set(0.45, 0.55, 0);
+player.add(sword);
+
+const belt = new THREE.Mesh(
+  new THREE.TorusGeometry(0.25, 0.04, 6, 12),
+  new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.8 })
+);
+belt.position.y = 0.5;
+belt.rotation.x = Math.PI / 2;
+player.add(belt);
+
+player.position.set(0, 0, 0);
+scene.add(player);
+
+// 键盘控制
+const keys = {};
+let playerAngle = 0;
+document.addEventListener('keydown', e => { keys[e.key] = true; if ('ArrowUp,ArrowDown,ArrowLeft,ArrowRight'.includes(e.key)) e.preventDefault(); });
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// 窗口自适应
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// 游戏循环
+function animate() {
+  let dx = 0, dy = 0;
+  if (keys.ArrowUp || keys.w || keys.W) dy = -1;
+  if (keys.ArrowDown || keys.s || keys.S) dy = 1;
+  if (keys.ArrowLeft || keys.a || keys.A) dx = -1;
+  if (keys.ArrowRight || keys.d || keys.D) dx = 1;
+
+  if (dx || dy) {
+    const l = Math.sqrt(dx * dx + dy * dy);
+    const speed = 5 * 0.016;
+    player.position.x = Math.max(-18, Math.min(18, player.position.x + dx / l * speed));
+    player.position.z = Math.max(-18, Math.min(18, player.position.z + dy / l * speed));
+    const ta = Math.atan2(dx, dy);
+    let diff = ta - playerAngle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    playerAngle += diff * 0.15;
+    player.rotation.y = playerAngle;
+  }
+
+  controls.target.set(player.position.x, 0, player.position.z);
   controls.update();
-  renderer.render(scene,camera); requestAnimationFrame(update);
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
 }
-update();
+animate();
 </script>
 </body>
 </html>
