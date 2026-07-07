@@ -18,15 +18,13 @@ canvas{display:block;width:100vw;height:100dvh}
 </style>
 </head>
 <body>
-<div id="loading">加载3D场景中...</div>
+<div id="loading">加载3D场景中...<br><small style="font-size:12px;color:#a08060">首次加载约5-15秒</small></div>
 <div id="hud"><span class="name">武侠·崛起 3D</span><span class="stat">方向键/WASD移动</span></div>
 <div id="joystick"><div class="knob" id="knob"></div></div>
 
-<!-- Three.js CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<!-- OrbitControls 和 GLTFLoader -->
+<!-- Three.js CDN（国内可用的镜像） -->
+<script src="https://cdn.bootcdn.net/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
 // ============ 场景 ============
@@ -535,7 +533,14 @@ window.addEventListener('resize', ()=>{
 });
 
 // 启动
-document.getElementById('loading').style.display = 'none';
+setTimeout(()=>{
+  const el = document.getElementById('loading');
+  if(el) el.style.display = 'none';
+}, 10000);
+// 如果Three.js已加载则立刻隐藏
+if(typeof THREE !== 'undefined'){
+  document.getElementById('loading').style.display = 'none';
+}
 update();
 </script>
 </body>
