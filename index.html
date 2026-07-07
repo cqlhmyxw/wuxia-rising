@@ -72,6 +72,9 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
+// 收集障碍物位置（用于碰撞检测）
+const obstacles = [];
+
 // 树
 function createTree(x, z) {
   const g = new THREE.Group();
@@ -90,6 +93,7 @@ function createTree(x, z) {
   crown.castShadow = true;
   g.add(crown);
   g.position.set(x, 0, z);
+  obstacles.push({ x, z, r: 0.6 }); // 树干碰撞半径
   return g;
 }
 for (let i = 0; i < 15; i++) {
@@ -116,6 +120,7 @@ function createHouse(x, z) {
   roof.rotation.y = Math.PI / 4;
   g.add(roof);
   g.position.set(x, 0, z);
+  obstacles.push({ x, z, r: 1.3 }); // 房子碰撞半径
   return g;
 }
 for (let i = 0; i < 3; i++) {
@@ -209,8 +214,21 @@ function animate() {
       const speed = 5 * 0.016;
       const nx = player.position.x + moveDir.x * speed;
       const nz = player.position.z + moveDir.z * speed;
-      player.position.x = Math.max(-18, Math.min(18, nx));
-      player.position.z = Math.max(-18, Math.min(18, nz));
+      
+      // 碰撞检测：检查目标位置是否与障碍物重叠
+      let blocked = false;
+      for (const ob of obstacles) {
+        const dist = Math.sqrt((nx - ob.x) ** 2 + (nz - ob.z) ** 2);
+        if (dist < ob.r + 0.3) { // 障碍物半径 + 人物半径
+          blocked = true;
+          break;
+        }
+      }
+      
+      if (!blocked) {
+        player.position.x = Math.max(-18, Math.min(18, nx));
+        player.position.z = Math.max(-18, Math.min(18, nz));
+      }
       
       // 人物朝向移动方向
       const ta = Math.atan2(moveDir.x, moveDir.z);
