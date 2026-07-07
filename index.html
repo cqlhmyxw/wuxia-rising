@@ -93,7 +93,7 @@ function createTree(x, z) {
   crown.castShadow = true;
   g.add(crown);
   g.position.set(x, 0, z);
-  obstacles.push({ x, z, r: 0.6 }); // 树干碰撞半径
+  obstacles.push({ x, z, r: 1.0 }); // 树冠碰撞半径（覆盖整棵树）
   return g;
 }
 for (let i = 0; i < 15; i++) {
@@ -211,24 +211,31 @@ function animate() {
     
     if (moveDir.length() > 0) {
       moveDir.normalize();
+      // 碰撞检测：X轴和Z轴分别检测，实现滑墙效果
       const speed = 5 * 0.016;
-      const nx = player.position.x + moveDir.x * speed;
-      const nz = player.position.z + moveDir.z * speed;
+      const pR = 0.4; // 人物半径
       
-      // 碰撞检测：检查目标位置是否与障碍物重叠
-      let blocked = false;
+      // X轴移动
+      const nx = player.position.x + moveDir.x * speed;
+      let blockedX = false;
       for (const ob of obstacles) {
-        const dist = Math.sqrt((nx - ob.x) ** 2 + (nz - ob.z) ** 2);
-        if (dist < ob.r + 0.3) { // 障碍物半径 + 人物半径
-          blocked = true;
+        if (Math.sqrt((nx - ob.x) ** 2 + (player.position.z - ob.z) ** 2) < ob.r + pR) {
+          blockedX = true;
           break;
         }
       }
+      if (!blockedX) player.position.x = Math.max(-18, Math.min(18, nx));
       
-      if (!blocked) {
-        player.position.x = Math.max(-18, Math.min(18, nx));
-        player.position.z = Math.max(-18, Math.min(18, nz));
+      // Z轴移动
+      const nz = player.position.z + moveDir.z * speed;
+      let blockedZ = false;
+      for (const ob of obstacles) {
+        if (Math.sqrt((player.position.x - ob.x) ** 2 + (nz - ob.z) ** 2) < ob.r + pR) {
+          blockedZ = true;
+          break;
+        }
       }
+      if (!blockedZ) player.position.z = Math.max(-18, Math.min(18, nz));
       
       // 人物朝向移动方向
       const ta = Math.atan2(moveDir.x, moveDir.z);
