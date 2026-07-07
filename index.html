@@ -15,6 +15,7 @@ canvas{display:block;width:100vw;height:100dvh}
 <div id="loading">加载3D资源中...</div>
 
 <!-- Three.js ESM方式加载，不会阻塞页面 -->
+<!-- 不需要CSS摇杆，用touch事件实现点击移动 -->
 <script type="importmap">
 {
   "imports": {
@@ -175,8 +176,29 @@ scene.add(player);
 // 键盘控制
 const keys = {};
 let playerAngle = 0;
+let touchDx = 0, touchDy = 0; // 触摸/摇杆方向
+
 document.addEventListener('keydown', e => { keys[e.key] = true; if ('ArrowUp,ArrowDown,ArrowLeft,ArrowRight'.includes(e.key)) e.preventDefault(); });
 document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// 触摸控制（虚拟摇杆）——触摸屏幕左侧区域控制移动
+canvas.addEventListener('touchstart', handleTouch, { passive: true });
+canvas.addEventListener('touchmove', handleTouch, { passive: true });
+canvas.addEventListener('touchend', () => { touchDx = 0; touchDy = 0; }, { passive: true });
+
+function handleTouch(e) {
+  const touch = e.touches[0];
+  if (!touch) return;
+  // 左半屏为摇杆区
+  if (touch.clientX < window.innerWidth / 2) {
+    // 映射到 -1 ~ 1
+    touchDx = (touch.clientX - window.innerWidth / 4) / (window.innerWidth / 4);
+    touchDy = (touch.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
+    // 限幅
+    touchDx = Math.max(-1, Math.min(1, touchDx));
+    touchDy = Math.max(-1, Math.min(1, touchDy));
+  }
+}
 
 // 窗口自适应
 window.addEventListener('resize', () => {
@@ -188,10 +210,10 @@ window.addEventListener('resize', () => {
 // 游戏循环
 function animate() {
   let dx = 0, dy = 0;
-  if (keys.ArrowUp || keys.w || keys.W) dy = -1;
-  if (keys.ArrowDown || keys.s || keys.S) dy = 1;
-  if (keys.ArrowLeft || keys.a || keys.A) dx = -1;
-  if (keys.ArrowRight || keys.d || keys.D) dx = 1;
+  if (keys.ArrowUp || keys.w || keys.W || touchDy < -0.3) dy = -1;
+  if (keys.ArrowDown || keys.s || keys.S || touchDy > 0.3) dy = 1;
+  if (keys.ArrowLeft || keys.a || keys.A || touchDx < -0.3) dx = -1;
+  if (keys.ArrowRight || keys.d || keys.D || touchDx > 0.3) dx = 1;
 
   if (dx || dy) {
     // 获取相机的前方向和右方向（在水平面上，忽略倾斜）
