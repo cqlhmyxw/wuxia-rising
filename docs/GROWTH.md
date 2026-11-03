@@ -1,7 +1,7 @@
 # 江湖山庄 · 成长与神通（GROWTH v1.0）
 
 > 庄主：cqlhmyxw ｜ 2026-11-03 ｜ 状态：待审阅
-> 配套：`docs/GDD.md` / `docs/SYSTEMS.md` / `docs/PLAY.md`
+> 配套：`docs/GDD.md` / `docs/SYSTEMS.md` / `docs/PLAY.md` / `docs/BUILD.md`（神通与木人在建设线的用法）
 > 本文回应庄主两点批评：① 代办梯度绑境界太慢，没体验感；② 境界能力、点化用途没想透。
 
 ---
