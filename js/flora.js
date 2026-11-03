@@ -1,19 +1,112 @@
 // 江湖山庄 — 植被与生机：松/阔叶/竹/灌木/草/芦苇/睡莲/蝶
+// M2：几何体树 → 贴图化真实树形（程序化 canvas 贴图 + 交叉面片树冠 + 风摆）
 import * as THREE from 'three';
+import { mergeGeometries } from '../utils/BufferGeometryUtils.js';
+
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = arr => arr[(Math.random() * arr.length) | 0];
+
+// ---------- 程序化贴图（运行时生成，零下载成本） ----------
+function canvasTex(w, h, draw) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  draw(ctx, w, h);
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+// 树叶簇：白色/浅灰叶片，实际颜色交给材质 color 调制
+const leafTex = canvasTex(256, 256, (ctx, w, h) => {
+  ctx.clearRect(0, 0, w, h);
+  for (let i = 0; i < 130; i++) {
+    const cx = rnd(0, w), cy = rnd(0, h);
+    const rw = rnd(9, 21), rh = rw * rnd(0.45, 0.8);
+    const lum = 180 + (Math.random() * 75 | 0);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.random() * Math.PI * 2);
+    ctx.fillStyle = `rgba(${lum},${lum},${lum},${0.82 + Math.random() * 0.18})`;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rw, rh, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+});
+
+// 松针：细长针叶，纵向均匀分布（不依赖上下方向，避免 UV 翻转问题）
+const needleTex = canvasTex(256, 256, (ctx, w, h) => {
+  ctx.clearRect(0, 0, w, h);
+  for (let i = 0; i < 340; i++) {
+    const x = rnd(0, w), y0 = rnd(-40, h * 0.7);
+    const len = rnd(h * 0.25, h * 0.55);
+    const lum = 80 + (Math.random() * 120 | 0);
+    ctx.strokeStyle = `rgba(${lum},${lum},${lum},${0.55 + Math.random() * 0.45})`;
+    ctx.lineWidth = rnd(1.1, 2.4);
+    ctx.beginPath();
+    ctx.moveTo(x, y0);
+    ctx.quadraticCurveTo(x + rnd(-7, 7), y0 + len * 0.55, x + rnd(-13, 13), y0 + len);
+    ctx.stroke();
+  }
+});
+
+// 树皮：纵向裂纹
+const barkTex = canvasTex(128, 256, (ctx, w, h) => {
+  ctx.fillStyle = '#6a5238';
+  ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 170; i++) {
+    const x = rnd(0, w);
+    ctx.strokeStyle = `rgba(${28 + Math.random() * 42 | 0},${20 + Math.random() * 30 | 0},${12 + Math.random() * 22 | 0},${0.2 + Math.random() * 0.55})`;
+    ctx.lineWidth = rnd(0.8, 3.2);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    let y = 0;
+    while (y < h) { y += rnd(8, 28); ctx.lineTo(x + rnd(-4, 4), y); }
+    ctx.stroke();
+  }
+  // 少量高光，避免糊成一片
+  for (let i = 0; i < 60; i++) {
+    ctx.strokeStyle = `rgba(190,175,150,${0.05 + Math.random() * 0.12})`;
+    ctx.lineWidth = rnd(0.6, 1.6);
+    const x = rnd(0, w);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + rnd(-5, 5), h); ctx.stroke();
+  }
+});
+
+// 草叶：底部生根，顶端渐细
+const grassTex = canvasTex(128, 128, (ctx, w, h) => {
+  ctx.clearRect(0, 0, w, h);
+  for (let i = 0; i < 26; i++) {
+    const x0 = rnd(w * 0.12, w * 0.88);
+    const tipX = x0 + rnd(-26, 26);
+    const tipY = rnd(0, h * 0.3);
+    const wBase = rnd(2.5, 5.5);
+    const lum = 170 + (Math.random() * 85 | 0);
+    ctx.fillStyle = `rgba(${lum},${lum},${lum},${0.8 + Math.random() * 0.2})`;
+    ctx.beginPath();
+    ctx.moveTo(x0 - wBase, h);
+    ctx.quadraticCurveTo(x0 - wBase * 0.4, (h + tipY) * 0.5, tipX, tipY);
+    ctx.quadraticCurveTo(x0 + wBase * 0.4, (h + tipY) * 0.5, x0 + wBase, h);
+    ctx.closePath();
+    ctx.fill();
+  }
+});
 
 const MAT = {
-  trunk: new THREE.MeshStandardMaterial({ color: 0x5a4230, roughness: 0.95 }),
-  trunkLight: new THREE.MeshStandardMaterial({ color: 0x6d5238, roughness: 0.95 }),
-  pineDark: new THREE.MeshStandardMaterial({ color: 0x2f5530, roughness: 0.88 }),
-  pineMid: new THREE.MeshStandardMaterial({ color: 0x3c6b38, roughness: 0.88 }),
-  pineLight: new THREE.MeshStandardMaterial({ color: 0x4a7c40, roughness: 0.88 }),
-  leafA: new THREE.MeshStandardMaterial({ color: 0x4f7f3c, roughness: 0.9 }),
-  leafB: new THREE.MeshStandardMaterial({ color: 0x5f8f45, roughness: 0.9 }),
-  leafC: new THREE.MeshStandardMaterial({ color: 0x6d9b4c, roughness: 0.9 }),
-  leafD: new THREE.MeshStandardMaterial({ color: 0x436f36, roughness: 0.9 }),
-  bamboo: new THREE.MeshStandardMaterial({ color: 0x7ba347, roughness: 0.75 }),
-  bambooNode: new THREE.MeshStandardMaterial({ color: 0x648a3a, roughness: 0.8 }),
-  bambooLeaf: new THREE.MeshStandardMaterial({ color: 0x86b154, roughness: 0.8, side: THREE.DoubleSide }),
+  bark: new THREE.MeshStandardMaterial({ map: barkTex, roughness: 0.98 }),
+  barkLight: new THREE.MeshStandardMaterial({ map: barkTex, color: 0xc8bba8, roughness: 0.98 }),
+  pineDark: new THREE.MeshStandardMaterial({ map: needleTex, color: 0x2f5330, alphaTest: 0.42, side: THREE.DoubleSide, roughness: 0.92 }),
+  pineMid: new THREE.MeshStandardMaterial({ map: needleTex, color: 0x3d6b39, alphaTest: 0.42, side: THREE.DoubleSide, roughness: 0.92 }),
+  pineLight: new THREE.MeshStandardMaterial({ map: needleTex, color: 0x4e8043, alphaTest: 0.42, side: THREE.DoubleSide, roughness: 0.92 }),
+  leafA: new THREE.MeshStandardMaterial({ map: leafTex, color: 0x4d7f3a, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.94 }),
+  leafB: new THREE.MeshStandardMaterial({ map: leafTex, color: 0x5f8f43, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.94 }),
+  leafC: new THREE.MeshStandardMaterial({ map: leafTex, color: 0x6f9d4c, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.94 }),
+  leafD: new THREE.MeshStandardMaterial({ map: leafTex, color: 0x406b34, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.94 }),
+  bamboo: new THREE.MeshStandardMaterial({ color: 0x7ba347, roughness: 0.72 }),
+  bambooNode: new THREE.MeshStandardMaterial({ color: 0x62893a, roughness: 0.78 }),
+  bambooLeaf: new THREE.MeshStandardMaterial({ map: leafTex, color: 0x8cb556, alphaTest: 0.42, side: THREE.DoubleSide, roughness: 0.88 }),
   rock: new THREE.MeshStandardMaterial({ color: 0x7d8577, roughness: 1, flatShading: true }),
   rockDark: new THREE.MeshStandardMaterial({ color: 0x6a7264, roughness: 1, flatShading: true }),
   reed: new THREE.MeshStandardMaterial({ color: 0x8a9a5c, roughness: 0.9 }),
@@ -21,8 +114,7 @@ const MAT = {
   lotus: new THREE.MeshStandardMaterial({ color: 0xe8a6b8, roughness: 0.7 }),
 };
 
-const rnd = (a, b) => a + Math.random() * (b - a);
-const pick = arr => arr[(Math.random() * arr.length) | 0];
+const LEAF_MATS = [MAT.leafA, MAT.leafB, MAT.leafC, MAT.leafD];
 
 function m(geo, mat, x = 0, y = 0, z = 0) {
   const o = new THREE.Mesh(geo, mat);
@@ -31,104 +123,174 @@ function m(geo, mat, x = 0, y = 0, z = 0) {
   return o;
 }
 
-// ---------- 松：分层错落锥体 ----------
-export function makePine(s = 1) {
-  const g = new THREE.Group();
-  const h = rnd(2.0, 2.8) * s;
-  // 树干（略带锥度）+ 根部隆起
-  g.add(m(new THREE.CylinderGeometry(0.09 * s, 0.21 * s, h, 8), MAT.trunk, 0, h / 2, 0));
-  g.add(m(new THREE.CylinderGeometry(0.2 * s, 0.3 * s, 0.3 * s, 8), MAT.trunk, 0, 0.12 * s, 0));
-
-  // 4~5 层树冠，逐层缩小、随机偏移
-  const layers = 4 + (Math.random() < 0.5 ? 1 : 0);
-  let cy = h * 0.62;
-  let cr = rnd(1.15, 1.5) * s;
-  for (let i = 0; i < layers; i++) {
-    const mat = i === 0 ? MAT.pineDark : (i % 2 ? MAT.pineMid : MAT.pineLight);
-    const cone = m(new THREE.ConeGeometry(cr, cr * rnd(1.25, 1.6), 9), mat,
-      rnd(-0.09, 0.09) * s, cy + cr * 0.42, rnd(-0.09, 0.09) * s);
-    cone.rotation.y = Math.random() * Math.PI * 2;
-    cone.rotation.z = rnd(-0.06, 0.06);
-    g.add(cone);
-    cy += cr * 0.55;
-    cr *= 0.72;
+// ---------- 风摆登记 ----------
+const swayers = [];
+function registerSway(obj, amp = 0.012, speed = 0.8) {
+  swayers.push({ obj, amp, speed, phase: Math.random() * 10, baseZ: obj.rotation.z, baseX: obj.rotation.x });
+}
+export function updateFoliage(t) {
+  for (const s of swayers) {
+    const w = Math.sin(t * s.speed + s.phase);
+    s.obj.rotation.z = s.baseZ + w * s.amp;
+    s.obj.rotation.x = s.baseX + Math.cos(t * s.speed * 0.7 + s.phase) * s.amp * 0.6;
   }
-  // 顶梢
-  g.add(m(new THREE.ConeGeometry(cr * 0.8, cr * 1.5, 8), MAT.pineLight, 0, cy + cr * 0.5, 0));
+}
+
+// 树冠：三片竖直 + 一片水平交叉，用贴图做出叶片轮廓
+function makeCanopyCluster(size, mat) {
+  const g = new THREE.Group();
+  const geo = new THREE.PlaneGeometry(size, size);
+  for (let i = 0; i < 3; i++) {
+    const p = new THREE.Mesh(geo, mat);
+    p.rotation.y = (i / 3) * Math.PI + rnd(-0.2, 0.2);
+    p.rotation.z = rnd(-0.16, 0.16);
+    p.castShadow = true;
+    p.receiveShadow = false;
+    g.add(p);
+  }
+  // 水平面补顶视死角
+  const top = new THREE.Mesh(geo, mat);
+  top.rotation.x = -Math.PI / 2;
+  top.rotation.z = Math.random() * Math.PI;
+  top.scale.setScalar(0.86);
+  top.castShadow = true;
+  top.position.y = size * 0.12;
+  g.add(top);
   return g;
 }
 
-// ---------- 阔叶：多团簇冠 ----------
+// ---------- 松：分层锯齿锥体 + 针叶贴图 ----------
+function jaggedCone(r, h, seg = 12) {
+  const geo = new THREE.ConeGeometry(r, h, seg, 2, true);
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const rr = Math.hypot(v.x, v.z);
+    if (rr > 0.001) {
+      // 底缘锯齿最明显，向上收敛
+      const yNorm = (v.y + h / 2) / h; // 0 底部 ~ 1 顶部
+      const j = 1 + (1 - yNorm) * rnd(-0.22, 0.22);
+      v.x *= j; v.z *= j;
+      v.y += (1 - yNorm) * rnd(-0.06, 0.06) * h;
+    }
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+export function makePine(s = 1) {
+  const g = new THREE.Group();
+  const h = rnd(2.2, 3.0) * s;
+
+  // 树干 + 根部隆起
+  const trunk = m(new THREE.CylinderGeometry(0.09 * s, 0.20 * s, h, 9), MAT.bark, 0, h / 2, 0);
+  g.add(trunk);
+  g.add(m(new THREE.CylinderGeometry(0.2 * s, 0.32 * s, 0.34 * s, 9), MAT.bark, 0, 0.14 * s, 0));
+
+  // 4~5 层树冠
+  const layers = 4 + (Math.random() < 0.5 ? 1 : 0);
+  let cy = h * 0.55;
+  let cr = rnd(1.15, 1.5) * s;
+  for (let i = 0; i < layers; i++) {
+    const mat = i === 0 ? MAT.pineDark : (i % 2 ? MAT.pineMid : MAT.pineLight);
+    const cone = m(jaggedCone(cr, cr * rnd(1.35, 1.75)), mat,
+      rnd(-0.08, 0.08) * s, cy + cr * 0.5, rnd(-0.08, 0.08) * s);
+    cone.rotation.y = Math.random() * Math.PI * 2;
+    cone.rotation.z = rnd(-0.07, 0.07);
+    g.add(cone);
+    registerSway(cone, 0.02 + i * 0.004, 0.55 + i * 0.06);
+    cy += cr * 0.52;
+    cr *= 0.74;
+  }
+  // 顶梢
+  const tip = m(jaggedCone(cr * 0.78, cr * 1.6, 9), MAT.pineLight, 0, cy + cr * 0.55, 0);
+  g.add(tip);
+  registerSway(tip, 0.03, 0.7);
+
+  registerSway(g, 0.006, 0.5);
+  return g;
+}
+
+// ---------- 阔叶：真实树皮 + 分枝 + 交叉面片树冠 ----------
 export function makeBroadleaf(s = 1) {
   const g = new THREE.Group();
-  const h = rnd(2.0, 2.6) * s;
-  g.add(m(new THREE.CylinderGeometry(0.11 * s, 0.24 * s, h, 8), MAT.trunkLight, 0, h / 2, 0));
+  const h = rnd(2.0, 2.7) * s;
+
+  const trunk = m(new THREE.CylinderGeometry(0.10 * s, 0.23 * s, h, 9), MAT.barkLight, 0, h / 2, 0);
+  g.add(trunk);
+  // 根部外扩
+  g.add(m(new THREE.CylinderGeometry(0.23 * s, 0.34 * s, 0.3 * s, 9), MAT.barkLight, 0, 0.13 * s, 0));
 
   // 2~3 根分叉枝
   const branches = 2 + (Math.random() * 2 | 0);
   const tips = [];
   for (let i = 0; i < branches; i++) {
     const a = (i / branches) * Math.PI * 2 + rnd(-0.4, 0.4);
-    const len = rnd(0.5, 0.9) * s;
-    const br = m(new THREE.CylinderGeometry(0.045 * s, 0.085 * s, len, 6), MAT.trunkLight,
-      Math.cos(a) * len * 0.28, h - 0.1 * s + len * 0.3, Math.sin(a) * len * 0.28);
+    const len = rnd(0.6, 1.0) * s;
+    const br = m(new THREE.CylinderGeometry(0.04 * s, 0.08 * s, len, 6), MAT.barkLight,
+      Math.cos(a) * len * 0.3, h - 0.05 * s + len * 0.32, Math.sin(a) * len * 0.3);
     br.rotation.z = Math.cos(a) * -0.55;
     br.rotation.x = Math.sin(a) * 0.55;
     g.add(br);
-    tips.push({ x: Math.cos(a) * len * 0.62, y: h + len * 0.55, z: Math.sin(a) * len * 0.62 });
+    tips.push({ x: Math.cos(a) * len * 0.66, y: h + len * 0.6, z: Math.sin(a) * len * 0.66 });
   }
 
-  // 树冠：中心大团 + 周围小团，形成不规则轮廓
-  const mats = [MAT.leafA, MAT.leafB, MAT.leafC, MAT.leafD];
-  const baseR = rnd(1.1, 1.45) * s;
-  const center = m(new THREE.IcosahedronGeometry(baseR, 1), pick(mats), 0, h + baseR * 0.72, 0);
-  center.scale.set(1.1, 0.86, 1.1);
+  // 树冠：中心大簇 + 周围小簇
+  const baseR = rnd(1.9, 2.5) * s;
+  const center = makeCanopyCluster(baseR, pick(LEAF_MATS));
+  center.position.y = h + baseR * 0.42;
   g.add(center);
+  registerSway(center, 0.03, 0.75);
 
   const blobs = 4 + (Math.random() * 3 | 0);
   for (let i = 0; i < blobs; i++) {
     const t = tips[i % tips.length];
-    const r = baseR * rnd(0.45, 0.72);
-    const b = m(new THREE.IcosahedronGeometry(r, 1), pick(mats));
+    const size = baseR * rnd(0.5, 0.78);
+    const b = makeCanopyCluster(size, pick(LEAF_MATS));
     b.position.set(
-      t.x + rnd(-0.4, 0.4) * s,
-      t.y + rnd(-0.25, 0.35) * s,
-      t.z + rnd(-0.4, 0.4) * s
+      t.x + rnd(-0.45, 0.45) * s,
+      t.y + rnd(-0.3, 0.4) * s,
+      t.z + rnd(-0.45, 0.45) * s
     );
-    b.scale.set(1, rnd(0.75, 0.95), 1);
-    b.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+    b.rotation.y = Math.random() * Math.PI;
     g.add(b);
+    registerSway(b, 0.035, rnd(0.6, 0.95));
   }
+
+  registerSway(g, 0.005, 0.45);
   return g;
 }
 
-// ---------- 竹：竹竿带节 + 竹叶 ----------
+// ---------- 竹：竹竿带节 + 竹叶（贴图） ----------
 export function makeBamboo(caneCount = 4) {
   const g = new THREE.Group();
+  const leafGeo = new THREE.PlaneGeometry(0.42, 0.62);
   for (let i = 0; i < caneCount; i++) {
     const h = rnd(3.6, 6.2);
     const cane = new THREE.Group();
     const lean = rnd(-0.09, 0.09);
-    // 分 3 段，做出轻微弯曲
     const segH = h / 3;
     for (let k = 0; k < 3; k++) {
       const r = 0.055 - k * 0.008;
-      const seg = m(new THREE.CylinderGeometry(r, r + 0.008, segH, 7), MAT.bamboo, 0, segH * (k + 0.5), 0);
+      const seg = m(new THREE.CylinderGeometry(r, r + 0.008, segH, 8), MAT.bamboo, 0, segH * (k + 0.5), 0);
       seg.rotation.z = lean * (k + 1) * 0.5;
       cane.add(seg);
-      // 竹节
-      cane.add(m(new THREE.CylinderGeometry(r + 0.018, r + 0.018, 0.045, 7), MAT.bambooNode, 0, segH * (k + 0.6), 0));
+      cane.add(m(new THREE.CylinderGeometry(r + 0.018, r + 0.018, 0.045, 8), MAT.bambooNode, 0, segH * (k + 0.6), 0));
     }
-    // 竹叶：顶端几片细长叶
-    for (let k = 0; k < 5; k++) {
-      const leaf = m(new THREE.PlaneGeometry(0.075, rnd(0.5, 0.85)), MAT.bambooLeaf, 0, 0, 0);
-      leaf.position.set(rnd(-0.35, 0.35), h - rnd(0, 1.1), rnd(-0.35, 0.35));
-      leaf.rotation.set(rnd(-0.7, 0.7), Math.random() * Math.PI, rnd(-0.9, -0.2));
-      leaf.castShadow = false;
+    // 竹叶簇
+    for (let k = 0; k < 7; k++) {
+      const leaf = new THREE.Mesh(leafGeo, MAT.bambooLeaf);
+      leaf.position.set(rnd(-0.4, 0.4), h - rnd(0, 1.5), rnd(-0.4, 0.4));
+      leaf.rotation.set(rnd(-0.6, 0.4), Math.random() * Math.PI * 2, rnd(-0.6, 0.6));
+      leaf.scale.set(rnd(0.7, 1.1), rnd(0.8, 1.2), 1);
+      leaf.castShadow = true;
       cane.add(leaf);
     }
     cane.position.set(rnd(-0.7, 0.7), 0, rnd(-0.7, 0.7));
     cane.rotation.y = Math.random() * Math.PI * 2;
+    registerSway(cane, 0.02, rnd(0.5, 0.8));
     g.add(cane);
   }
   return g;
@@ -137,15 +299,14 @@ export function makeBamboo(caneCount = 4) {
 // ---------- 灌木 ----------
 export function makeShrub(s = 1) {
   const g = new THREE.Group();
-  const mats = [MAT.leafA, MAT.leafB, MAT.leafD];
   const n = 2 + (Math.random() * 3 | 0);
   for (let i = 0; i < n; i++) {
-    const r = rnd(0.3, 0.55) * s;
-    const b = m(new THREE.IcosahedronGeometry(r, 1), pick(mats),
-      rnd(-0.32, 0.32) * s, r * rnd(0.55, 0.95), rnd(-0.32, 0.32) * s);
-    b.scale.set(1, rnd(0.65, 0.85), 1);
-    b.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+    const size = rnd(0.6, 1.05) * s;
+    const b = makeCanopyCluster(size, pick([MAT.leafA, MAT.leafB, MAT.leafD]));
+    b.position.set(rnd(-0.34, 0.34) * s, size * rnd(0.32, 0.45), rnd(-0.34, 0.34) * s);
+    b.rotation.y = Math.random() * Math.PI;
     g.add(b);
+    registerSway(b, 0.02, rnd(0.7, 1.1));
   }
   return g;
 }
@@ -168,11 +329,17 @@ export function makeRock(s = 1) {
   return r;
 }
 
-// ---------- 草丛（InstancedMesh，一次 draw call） ----------
+// ---------- 草丛（交叉面片 + 草叶贴图，InstancedMesh 一次 draw call） ----------
 export function makeGrassField(scene, samples, count = 2600) {
-  const geo = new THREE.ConeGeometry(0.055, 0.42, 3);
-  geo.translate(0, 0.21, 0);
-  const mat = new THREE.MeshStandardMaterial({ color: 0x6f9048, roughness: 0.95 });
+  const a = new THREE.PlaneGeometry(0.62, 0.46);
+  a.translate(0, 0.23, 0);
+  const b = a.clone(); b.rotateY(Math.PI / 2);
+  const c = a.clone(); c.rotateY(Math.PI / 4);
+  const geo = mergeGeometries([a, b, c], false);
+
+  const mat = new THREE.MeshStandardMaterial({
+    map: grassTex, alphaTest: 0.38, side: THREE.DoubleSide, roughness: 0.95,
+  });
   const inst = new THREE.InstancedMesh(geo, mat, count);
   inst.castShadow = false;
   inst.receiveShadow = false;
@@ -185,14 +352,13 @@ export function makeGrassField(scene, samples, count = 2600) {
     const p = samples();
     if (!p) continue;
     dummy.position.set(p.x, p.y, p.z);
-    dummy.rotation.set(rnd(-0.16, 0.16), Math.random() * Math.PI * 2, rnd(-0.16, 0.16));
-    const s = rnd(0.7, 1.5);
-    dummy.scale.set(s, s * rnd(0.8, 1.5), s);
+    dummy.rotation.set(rnd(-0.1, 0.1), Math.random() * Math.PI * 2, rnd(-0.1, 0.1));
+    const s = rnd(0.72, 1.45);
+    dummy.scale.set(s, s * rnd(0.85, 1.4), s);
     dummy.updateMatrix();
     inst.setMatrixAt(n, dummy.matrix);
-    // 颜色微差：偏黄绿到深绿
     const k = Math.random();
-    color.setRGB(0.32 + k * 0.2, 0.44 + k * 0.22, 0.2 + k * 0.1);
+    color.setRGB(0.34 + k * 0.22, 0.46 + k * 0.24, 0.2 + k * 0.1);
     inst.setColorAt(n, color);
     n++;
   }
@@ -253,6 +419,7 @@ export function makeReeds(scene, cx, cz, radius, count = 46) {
     pl.rotation.z = st.rotation.z;
     g.add(pl);
     g.position.set(x, -0.62, z);
+    registerSway(g, 0.03, rnd(0.9, 1.4));
     group.add(g);
   }
   scene.add(group);
@@ -267,13 +434,11 @@ export function makeLilies(scene, cx, cz, radius, count = 22) {
     const d = Math.sqrt(Math.random()) * radius * 0.82;
     const x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
     const r = rnd(0.28, 0.55);
-    // 荷叶：带缺口的圆（用 CircleGeometry 的 thetaLength 做出豁口）
     const pad = new THREE.Mesh(new THREE.CircleGeometry(r, 14, 0.35, Math.PI * 2 - 0.7), MAT.lily);
     pad.rotation.x = -Math.PI / 2;
     pad.rotation.z = Math.random() * Math.PI * 2;
     pad.position.set(x, -0.5 + rnd(0, 0.03), z);
     group.add(pad);
-    // 少量荷花
     if (Math.random() < 0.22) {
       const f = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.2, 6), MAT.lotus);
       f.position.set(x, -0.42, z);

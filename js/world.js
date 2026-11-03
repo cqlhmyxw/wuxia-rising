@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import {
   makePine, makeBroadleaf, makeBamboo, makeShrub, makeRock,
-  makeGrassField, makeFlowers, makeReeds, makeLilies, makeButterflies
+  makeGrassField, makeFlowers, makeReeds, makeLilies, makeButterflies,
+  updateFoliage
 } from './flora.js';
 
 export const POND = { x: 35, z: -18, r: 11.5, waterY: -0.55 };
@@ -223,5 +224,6 @@ export function buildWorld(scene) {
     ripple.scale.setScalar(1 + s * 10);
     ripple.material.opacity = 0.3 * (1 - s);
     butterflies.update(t);
+    updateFoliage(t);
   };
 }
