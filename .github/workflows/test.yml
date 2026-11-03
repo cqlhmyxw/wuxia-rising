@@ -2,7 +2,7 @@ name: Smoke Test
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, phase-1, dev]
   pull_request:
     branches: [main]
 
@@ -15,16 +15,25 @@ jobs:
       - name: HTML 结构完整
         run: grep -q "</html>" index.html
 
-      - name: Three.js 本地引用且文件在仓库（线上白屏根因防线）
+      - name: Three.js 本地模块引用且文件在仓库
         run: |
-          grep -q 'src="./lib/three.min.js"' index.html
-          test -f lib/three.min.js
+          grep -q 'lib/three.module.js' index.html
+          test -f lib/three.module.js
 
-      - name: canvas 变量已定义（触摸/摇杆 ReferenceError 防线）
-        run: grep -qE "var canvas\s*=\s*renderer\.domElement" index.html
+      - name: ES 模块入口存在
+        run: |
+          test -f js/main.js
+          grep -q "import { boot }" index.html
+          grep -q "export function boot" js/main.js
 
-      - name: 游戏循环入口存在
-        run: grep -q "animate();" index.html
+      - name: 渲染循环入口存在
+        run: grep -q "requestAnimationFrame" js/main.js
+
+      - name: 世界与建筑模块在位
+        run: |
+          test -f js/world.js
+          test -f js/architecture.js
+          test -f js/meditation.js
 
       - name: 核心数值资产在位
         run: |
