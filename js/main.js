@@ -55,7 +55,7 @@ export function boot() {
   const player = character.group;
   const SPAWN = { x: 0, z: 18 };
   player.position.set(SPAWN.x, terrainHeight(SPAWN.x, SPAWN.z), SPAWN.z);
-  player.rotation.y = Math.PI; // 面向山门方向（+z）
+  player.rotation.y = 0; // 模型正面为 -Z（已在 character.js 内补转 π），此处 0 即面向 +z 山门
   scene.add(player);
 
   // ---------- 修炼 ----------
@@ -143,7 +143,7 @@ export function boot() {
     return true;
   }
 
-  let playerAngle = Math.PI;
+  let playerAngle = 0;
   const JUMP_V = 5.6, GRAVITY = 17.5;
   let vy = 0, jumpY = 0, airborne = false;
   let moving = false;
@@ -173,7 +173,7 @@ export function boot() {
         const mx = dx * cosT + dy * sinT;
         const mz = -dx * sinT + dy * cosT;
         const len = Math.max(0.001, Math.hypot(mx, mz));
-        const speed = (running ? 8.0 : 4.8) * dt;
+        const speed = (running ? 12.5 : 7.2) * dt;
         const nx = player.position.x + (mx / len) * speed;
         const nz = player.position.z + (mz / len) * speed;
         if (tryMove(nx, player.position.z)) player.position.x = nx;
@@ -204,7 +204,7 @@ export function boot() {
     player.position.y = groundY + jumpY + sitDrop;
 
     character.update(t, dt, moving, airborne, running);
-    if (meditation.sitting) player.rotation.y = playerAngle = Math.PI; // 打坐面向山门
+    if (meditation.sitting) player.rotation.y = playerAngle = 0; // 打坐面向山门
 
     playerToCushion = Math.hypot(player.position.x - pavilion.cushionPos.x, player.position.z - pavilion.cushionPos.z);
     meditation.update(t, dt, playerToCushion);
