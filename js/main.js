@@ -72,6 +72,8 @@ export function boot() {
     if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') e.preventDefault();
   });
   document.addEventListener('keyup', e => { keys[e.key] = false; keys[e.code] = false; });
+  // 切窗/失焦时清空按键，防止"往前走停不下来"
+  window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; jumpQueued = false; });
 
   // 相机轨道：左键/右键拖动都可转视角；右键不弹菜单
   let orbit = { on: false, x: 0, y: 0, theta: 2.6, phi: 0.42, r: 11 };
@@ -156,6 +158,7 @@ export function boot() {
 
     // ---- 移动 ----
     moving = false;
+    const running = !!(keys.ShiftLeft || keys.ShiftRight);
     if (!meditation.sitting) {
       let dx = 0, dy = 0;
       if (keys.ArrowUp || keys.w || keys.W || (joy.on && joy.dy < -0.25)) dy = -1;
@@ -170,7 +173,7 @@ export function boot() {
         const mx = dx * cosT + dy * sinT;
         const mz = -dx * sinT + dy * cosT;
         const len = Math.max(0.001, Math.hypot(mx, mz));
-        const speed = 4.8 * dt;
+        const speed = (running ? 8.0 : 4.8) * dt;
         const nx = player.position.x + (mx / len) * speed;
         const nz = player.position.z + (mz / len) * speed;
         if (tryMove(nx, player.position.z)) player.position.x = nx;
@@ -200,7 +203,7 @@ export function boot() {
     const sitDrop = meditation.sitting ? -0.3 + Math.sin(t * 1.1) * 0.018 : 0;
     player.position.y = groundY + jumpY + sitDrop;
 
-    character.update(t, dt, moving && !airborne, airborne, 1);
+    character.update(t, dt, moving, airborne, running);
     if (meditation.sitting) player.rotation.y = playerAngle = Math.PI; // 打坐面向山门
 
     playerToCushion = Math.hypot(player.position.x - pavilion.cushionPos.x, player.position.z - pavilion.cushionPos.z);
