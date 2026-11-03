@@ -108,8 +108,7 @@ export function initMeditation(scene, cushionPos, player) {
         refreshHud();
       }
       qi.update(t, dt, state.sitting);
-      // 打坐姿态：主角坐下（整体压低一点），轻微呼吸起伏
-      player.position.y = player.userData.baseY + (state.sitting ? -0.28 : 0) + (state.sitting ? Math.sin(t * 1.1) * 0.02 : 0);
+      // 打坐时的落座高度由 main.js 统一计算（player.position.y），此处不再覆写
     },
     isNear(playerDist) { return playerDist < 3; },
     showHint(text) { hint.textContent = text; hint.style.display = 'block'; },

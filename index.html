@@ -5,19 +5,26 @@
 <style>
 *{margin:0;padding:0;border:0;box-sizing:border-box}
 body{background:#87a5b8;overflow:hidden;font-family:'KaiTi','STKaiti',serif;user-select:none;-webkit-user-select:none}
-#loading{position:fixed;inset:0;background:linear-gradient(#b8c8cf,#87a5b8);color:#3a4a52;display:flex;justify-content:center;align-items:center;flex-direction:column;gap:10px;z-index:100;font-size:22px;letter-spacing:6px}
+#loading{position:fixed;inset:0;background:linear-gradient(#c3d4da,#8fabbd);color:#3a4a52;display:flex;justify-content:center;align-items:center;flex-direction:column;gap:10px;z-index:100;font-size:22px;letter-spacing:6px;transition:opacity .6s}
 #loading .sub{font-size:12px;color:#5a6a72;letter-spacing:2px}
 #err{position:fixed;inset:0;background:#1a120e;color:#e8a0a0;display:none;justify-content:center;align-items:center;font-size:14px;padding:30px;text-align:center;z-index:200;white-space:pre-wrap}
 canvas{display:block;width:100vw;height:100dvh}
 /* HUD */
-#hud{position:fixed;left:12px;bottom:12px;z-index:50;color:#f5efe0;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,.6);pointer-events:none}
+#hud{position:fixed;left:14px;bottom:14px;z-index:50;color:#f5efe0;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,.6);pointer-events:none}
 #hud .realm{font-size:18px;letter-spacing:3px;color:#ffe8b0}
 #hud .xiu{opacity:.85;font-size:12px}
-#hint{position:fixed;left:50%;bottom:16%;transform:translateX(-50%);z-index:50;color:#fff;font-size:16px;letter-spacing:4px;text-shadow:0 1px 4px rgba(0,0,0,.7);display:none}
-#medit{position:fixed;right:14px;bottom:14px;z-index:50;display:none}
-#medit button{background:rgba(20,30,25,.55);color:#ffe8b0;border:1px solid rgba(255,232,176,.4);border-radius:6px;padding:10px 18px;font-family:inherit;font-size:15px;letter-spacing:4px;backdrop-filter:blur(4px)}
+#hint{position:fixed;left:50%;bottom:22%;transform:translateX(-50%);z-index:50;color:#fff;font-size:16px;letter-spacing:4px;text-shadow:0 1px 6px rgba(0,0,0,.75);display:none;white-space:nowrap}
+#medit{position:fixed;right:16px;bottom:88px;z-index:50;display:none}
+#medit button{background:rgba(20,30,25,.55);color:#ffe8b0;border:1px solid rgba(255,232,176,.4);border-radius:8px;padding:11px 20px;font-family:inherit;font-size:15px;letter-spacing:4px;backdrop-filter:blur(6px)}
 #medit button:active{background:rgba(60,80,60,.7)}
-#title{position:fixed;top:18px;left:50%;transform:translateX(-50%);color:rgba(245,239,224,.9);font-size:15px;letter-spacing:10px;text-shadow:0 1px 4px rgba(0,0,0,.4);pointer-events:none}
+#title{position:fixed;top:16px;left:50%;transform:translateX(-50%);color:rgba(245,239,224,.92);font-size:15px;letter-spacing:10px;text-shadow:0 1px 4px rgba(0,0,0,.4);pointer-events:none}
+/* 操作提示 */
+#ctrl{position:fixed;top:52px;right:14px;z-index:50;color:rgba(255,255,255,.9);font-size:12px;line-height:1.9;text-align:right;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none;transition:opacity 1.2s}
+#ctrl kbd{display:inline-block;min-width:18px;padding:1px 5px;margin:0 2px;border-radius:3px;background:rgba(0,0,0,.34);border:1px solid rgba(255,255,255,.28);font-family:Consolas,monospace;font-size:11px}
+/* 移动端跳跃 */
+#jumpBtn{position:fixed;right:18px;bottom:18px;z-index:60;width:64px;height:64px;border-radius:50%;background:rgba(20,30,25,.5);color:#ffe8b0;font-family:inherit;font-size:14px;letter-spacing:2px;border:1px solid rgba(255,232,176,.38);backdrop-filter:blur(6px);display:none}
+#jumpBtn:active{background:rgba(80,100,70,.75)}
+body.touch #jumpBtn{display:block}
 </style>
 </head>
 <body>
@@ -26,11 +33,32 @@ canvas{display:block;width:100vw;height:100dvh}
 <div id="title">江 湖 山 庄</div>
 <div id="hud"><div class="realm">—</div><div class="xiu">修为 0</div></div>
 <div id="hint"></div>
+<div id="ctrl">
+  <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 行走<br>
+  <kbd>space</kbd> 跳跃<br>
+  左键 / 右键拖动 转视角 · 滚轮 远近<br>
+  <kbd>E</kbd> 打坐
+</div>
 <div id="medit"><button id="meditBtn">打 坐</button></div>
+<button id="jumpBtn">跃</button>
 <script type="importmap">{"imports":{"three":"./lib/three.module.js"}}</script>
 <script type="module">
+if ('ontouchstart' in window) document.body.classList.add('touch');
+document.getElementById('jumpBtn').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
+});
+// 提示条 12 秒后淡出
+setTimeout(() => { const c = document.getElementById('ctrl'); if (c) c.style.opacity = '0'; }, 12000);
+
 import { boot } from './js/main.js';
-try { boot(); document.title = '江湖山庄 · 运行中'; } catch (e) {
+try {
+  boot();
+  document.title = '江湖山庄 · 运行中';
+  const l = document.getElementById('loading');
+  l.style.opacity = '0';
+  setTimeout(() => l.style.display = 'none', 700);
+} catch (e) {
   document.title = '江湖山庄 · 启动失败';
   const el = document.getElementById('err');
   el.style.display = 'flex'; el.textContent = '启动失败：' + (e && e.message || e);
@@ -38,6 +66,27 @@ try { boot(); document.title = '江湖山庄 · 运行中'; } catch (e) {
   console.error(e);
 }
 window.addEventListener('error', e => { document.title = '江湖山庄 · 运行错误'; });
+
+// 自检：URL 带 ?snap=<角度> 时，4.5s 后回传一张截图到本地接收器
+if (location.search.includes('snap') && window.__snap) {
+  const shotAt = (x, y, z, lx, ly, lz) => {
+    try {
+      const cam = window.__cam;
+      if (cam) { cam.position.set(x, y, z); cam.lookAt(lx, ly, lz); }
+      return window.__snap(0.55, 1100);
+    } catch (e) { return null; }
+  };
+  setTimeout(async () => {
+    const cv = document.querySelector('canvas');
+    const info = cv ? cv.width + 'x' + cv.height + '/iw' + window.innerWidth : 'nocanvas';
+    const d = shotAt(1.6, 1.7, 19.6, 0, 1.05, 17.6) || (window.__snap && window.__snap(0.55, 1100));
+    if (!d) { document.title = 'snap-null ' + info; return; }
+    try {
+      await fetch('http://127.0.0.1:8642/shot', { method: 'POST', body: d, headers: { 'Content-Type': 'text/plain' } });
+      document.title = 'snap-ok ' + d.length + ' ' + info;
+    } catch (e) { document.title = 'snap-fail ' + info; }
+  }, 4500);
+}
 </script>
 </body>
 </html>
