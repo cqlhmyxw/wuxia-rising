@@ -3,8 +3,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../lib/GLTFLoader.js';
 
-// Mixamo 模型正面朝 +Z，与移动朝向公式（rotation.y = atan2(mx, mz)）一致
-const MODEL_YAW = 0;
+// Soldier.glb 实测正面朝 -Z（three.js 官方示例相机即从 -Z 方向观看），
+// 故需补转 π 才能与移动朝向公式（rotation.y = atan2(mx, mz)）一致
+const MODEL_YAW = Math.PI;
 
 export function buildCharacter() {
   const group = new THREE.Group();
@@ -81,6 +82,9 @@ export function buildCharacter() {
         else if (n.includes('run')) actions.run = mixer.clipAction(clip);
       }
       if (actions.idle) { actions.idle.play(); current = 'idle'; }
+      // 移动速度加快后，同步动画播放速率，避免"脚底打滑"
+      if (actions.walk) actions.walk.timeScale = 1.35;
+      if (actions.run) actions.run.timeScale = 1.25;
       ready = true;
       document.title = document.title.replace('运行中', '运行中·角色就绪');
     },
