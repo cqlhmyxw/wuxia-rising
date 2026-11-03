@@ -12,16 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to gh-pages
-        run: |
-          mkdir -p /tmp/deploy
-          cp index.html /tmp/deploy/
-          cp -r assets /tmp/deploy/ 2>/dev/null || true
-          cd /tmp/deploy
-          git init
-          git checkout -b gh-pages
-          git config user.name "xiaokong"
-          git config user.email "xiaokong@fast-api-hub.top"
-          git add -A
-          git commit -m "deploy: ${{ github.sha }}"
-          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git push origin gh-pages --force
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
+          exclude_assets: '.github,app-assets'
+          force_orphan: true
