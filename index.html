@@ -60,7 +60,7 @@ function showErr(msg) {
   if (l) l.style.display = 'none';
 }
 window.addEventListener('error', e => { document.title = 'RUNERR ' + ((e.message) || ''); });
-import('./js/main.js?v=12').then(m => {
+import('./js/main.js?v=13').then(m => {
   try {
     m.boot();
     document.title = '江湖山庄 · 运行中';
