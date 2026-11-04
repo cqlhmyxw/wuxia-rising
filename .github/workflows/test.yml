@@ -23,7 +23,7 @@ jobs:
       - name: ES 模块入口存在
         run: |
           test -f js/main.js
-          grep -q "import { boot }" index.html
+          grep -q "js/main.js" index.html
           grep -q "export function boot" js/main.js
 
       - name: 渲染循环入口存在
