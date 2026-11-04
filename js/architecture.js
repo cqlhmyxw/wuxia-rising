@@ -1,6 +1,6 @@
 // 江湖山庄 — 中式建筑构件体系（模块化，全部程序化几何）
 import * as THREE from 'three';
-import { colliders, terrainHeight } from './world.js';
+import { colliders, terrainHeight } from './world.js?v=12';
 
 // 配色：木 / 朱漆 / 青瓦 / 粉墙 / 石材
 const M = {
