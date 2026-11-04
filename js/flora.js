@@ -477,6 +477,76 @@ export function makeLilies(scene, cx, cz, radius, count = 22) {
   return group;
 }
 
+// ---------- 落英（飘落花瓣，循环） ----------
+const petalTex = canvasTex(64, 64, (ctx, w, h) => {
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#f4c6d4';
+  ctx.beginPath();
+  ctx.ellipse(w / 2, h / 2, w * 0.32, h * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.beginPath();
+  ctx.ellipse(w * 0.42, h * 0.42, w * 0.12, h * 0.18, 0, 0, Math.PI * 2);
+  ctx.fill();
+});
+export function makePetals(scene, count = 90) {
+  const geo = new THREE.PlaneGeometry(0.12, 0.16);
+  const mat = new THREE.MeshStandardMaterial({
+    map: petalTex, side: THREE.DoubleSide, roughness: 0.8, transparent: true, opacity: 0.95
+  });
+  const list = [];
+  for (let i = 0; i < count; i++) {
+    const m = new THREE.Mesh(geo, mat);
+    const a = Math.random() * Math.PI * 2, d = 8 + Math.random() * 42;
+    const x = Math.cos(a) * d, z = Math.sin(a) * d;
+    m.position.set(x, 2 + Math.random() * 6, z);
+    m.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+    scene.add(m);
+    list.push({ m, x, z, y0: m.position.y, phase: Math.random() * 10, fall: 0.2 + Math.random() * 0.35, spin: rnd(0.5, 1.6) });
+  }
+  return {
+    update(t, dt) {
+      for (const p of list) {
+        p.y0 -= p.fall * dt;
+        if (p.y0 < 0.2) p.y0 = 7 + Math.random() * 2;
+        p.m.position.y = p.y0;
+        p.m.position.x = p.x + Math.sin(t * 0.6 + p.phase) * 0.6;
+        p.m.position.z = p.z + Math.cos(t * 0.5 + p.phase) * 0.6;
+        p.m.rotation.x += p.spin * dt;
+        p.m.rotation.y += p.spin * 0.7 * dt;
+      }
+    }
+  };
+}
+
+// ---------- 飞鸟（远处 V 形掠过） ----------
+export function makeBirds(scene, count = 3) {
+  const mat = new THREE.MeshStandardMaterial({ color: 0x33312e, roughness: 1 });
+  const birds = [];
+  for (let i = 0; i < count; i++) {
+    const b = new THREE.Group();
+    const wgeo = new THREE.BoxGeometry(0.5, 0.02, 0.1);
+    const wl = new THREE.Mesh(wgeo, mat); wl.position.x = -0.25; wl.rotation.z = 0.5;
+    const wr = new THREE.Mesh(wgeo, mat); wr.position.x = 0.25; wr.rotation.z = -0.5;
+    b.add(wl, wr);
+    b.scale.setScalar(1.2 + Math.random());
+    scene.add(b);
+    birds.push({ b, wl, wr, r: 60 + Math.random() * 30, h: 18 + Math.random() * 14, phase: Math.random() * 10, speed: rnd(0.05, 0.12) });
+  }
+  return {
+    update(t) {
+      for (const bd of birds) {
+        const a = t * bd.speed + bd.phase;
+        bd.b.position.set(Math.cos(a) * bd.r, bd.h + Math.sin(a * 2) * 2, Math.sin(a) * bd.r);
+        bd.b.rotation.y = -a + Math.PI / 2;
+        const flap = Math.sin(t * 4 + bd.phase) * 0.5 + 0.5;
+        bd.wl.rotation.z = 0.2 + flap * 0.5;
+        bd.wr.rotation.z = -0.2 - flap * 0.5;
+      }
+    }
+  };
+}
+
 // ---------- 蝴蝶（3 只，飘飞） ----------
 export function makeButterflies(scene, anchors) {
   const list = [];
