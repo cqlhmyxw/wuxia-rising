@@ -1,9 +1,9 @@
 // 江湖山庄 — 入口：渲染器、相机、操控、主循环
 import * as THREE from 'three';
-import { buildWorld, terrainHeight, colliders, world as worldHooks, POND } from './world.js?v=12';
-import { buildVillage } from './architecture.js?v=12';
-import { initMeditation } from './meditation.js?v=12';
-import { buildCharacter } from './character.js?v=12';
+import { buildWorld, terrainHeight, colliders, world as worldHooks, POND } from './world.js?v=13';
+import { buildVillage } from './architecture.js?v=13';
+import { initMeditation } from './meditation.js?v=13';
+import { buildCharacter } from './character.js?v=13';
 
 export function boot() {
   // ---------- 渲染基础 ----------
