@@ -136,25 +136,30 @@ export function updateFoliage(t) {
   }
 }
 
-// 树冠：三片竖直 + 一片水平交叉，用贴图做出叶片轮廓
+// 树冠：实心内核 + 五片竖直 + 一片水平交叉面片，贴图做叶片轮廓
 function makeCanopyCluster(size, mat) {
   const g = new THREE.Group();
   const geo = new THREE.PlaneGeometry(size, size);
-  for (let i = 0; i < 3; i++) {
+  // 实心内核：消除面片间的穿透感，避免"乱"
+  const coreMat = new THREE.MeshStandardMaterial({
+    color: mat.color.clone().multiplyScalar(0.66), roughness: 0.96, flatShading: true
+  });
+  const core = m(new THREE.IcosahedronGeometry(size * 0.46, 0), coreMat, 0, size * 0.05, 0);
+  core.castShadow = true;
+  g.add(core);
+  for (let i = 0; i < 5; i++) {
     const p = new THREE.Mesh(geo, mat);
-    p.rotation.y = (i / 3) * Math.PI + rnd(-0.2, 0.2);
-    p.rotation.z = rnd(-0.16, 0.16);
+    p.rotation.y = (i / 5) * Math.PI + rnd(-0.1, 0.1);
+    p.rotation.z = rnd(-0.1, 0.1);
     p.castShadow = true;
-    p.receiveShadow = false;
     g.add(p);
   }
-  // 水平面补顶视死角
   const top = new THREE.Mesh(geo, mat);
   top.rotation.x = -Math.PI / 2;
   top.rotation.z = Math.random() * Math.PI;
-  top.scale.setScalar(0.86);
+  top.scale.setScalar(0.82);
   top.castShadow = true;
-  top.position.y = size * 0.12;
+  top.position.y = size * 0.2;
   g.add(top);
   return g;
 }
@@ -182,7 +187,7 @@ function jaggedCone(r, h, seg = 12) {
 
 export function makePine(s = 1) {
   const g = new THREE.Group();
-  const h = rnd(2.2, 3.0) * s;
+  const h = rnd(3.4, 5.4) * s;
 
   // 树干 + 根部隆起
   const trunk = m(new THREE.CylinderGeometry(0.09 * s, 0.20 * s, h, 9), MAT.bark, 0, h / 2, 0);
@@ -216,7 +221,7 @@ export function makePine(s = 1) {
 // ---------- 阔叶：真实树皮 + 分枝 + 交叉面片树冠 ----------
 export function makeBroadleaf(s = 1) {
   const g = new THREE.Group();
-  const h = rnd(2.0, 2.7) * s;
+  const h = rnd(3.0, 4.6) * s;
 
   const trunk = m(new THREE.CylinderGeometry(0.10 * s, 0.23 * s, h, 9), MAT.barkLight, 0, h / 2, 0);
   g.add(trunk);
@@ -268,7 +273,7 @@ export function makeBamboo(caneCount = 4) {
   const g = new THREE.Group();
   const leafGeo = new THREE.PlaneGeometry(0.42, 0.62);
   for (let i = 0; i < caneCount; i++) {
-    const h = rnd(3.6, 6.2);
+    const h = rnd(4.5, 8.0);
     const cane = new THREE.Group();
     const lean = rnd(-0.09, 0.09);
     const segH = h / 3;
@@ -330,8 +335,8 @@ export function makeRock(s = 1) {
 }
 
 // ---------- 草丛（交叉面片 + 草叶贴图，InstancedMesh 一次 draw call） ----------
-export function makeGrassField(scene, samples, count = 2600) {
-  const a = new THREE.PlaneGeometry(0.62, 0.46);
+export function makeGrassField(scene, samples, count = 9000) {
+  const a = new THREE.PlaneGeometry(0.5, 0.36);
   a.translate(0, 0.23, 0);
   const b = a.clone(); b.rotateY(Math.PI / 2);
   const c = a.clone(); c.rotateY(Math.PI / 4);
@@ -369,13 +374,35 @@ export function makeGrassField(scene, samples, count = 2600) {
   return inst;
 }
 
-// ---------- 野花（小簇） ----------
-export function makeFlowers(scene, samples, count = 180) {
-  const stemGeo = new THREE.CylinderGeometry(0.012, 0.014, 0.3, 4);
-  stemGeo.translate(0, 0.15, 0);
-  const headGeo = new THREE.SphereGeometry(0.055, 7, 6);
+// ---------- 泥土斑块（造田/水岸边裸露的泥土地） ----------
+export function makeDirtPatch(scene, x, z, r) {
+  const geo = new THREE.CircleGeometry(r, 24);
+  geo.rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x6e5536, roughness: 1 });
+  const patch = new THREE.Mesh(geo, mat);
+  patch.position.set(x, terrainHeightSafe(x, z) + 0.02, z);
+  patch.receiveShadow = true;
+  scene.add(patch);
+  // 散落小石
+  for (let i = 0; i < 5; i++) {
+    const a = Math.random() * Math.PI * 2, d = rnd(0, r * 0.8);
+    const rk = makeRock(rnd(0.25, 0.5));
+    rk.position.set(x + Math.cos(a) * d, terrainHeightSafe(x, z) + 0.05, z + Math.sin(a) * d);
+    scene.add(rk);
+  }
+}
+// terrainHeight 在 world.js 中定义，这里用迟绑定避免循环依赖
+let _th = null;
+export function bindTerrainHeight(fn) { _th = fn; }
+function terrainHeightSafe(x, z) { return _th ? _th(x, z) : 0; }
+
+// ---------- 野花（更艳更多） ----------
+export function makeFlowers(scene, samples, count = 520) {
+  const stemGeo = new THREE.CylinderGeometry(0.013, 0.016, 0.42, 4);
+  stemGeo.translate(0, 0.21, 0);
+  const headGeo = new THREE.SphereGeometry(0.085, 8, 7);
   const stemMat = new THREE.MeshStandardMaterial({ color: 0x5d7c3c, roughness: 0.9 });
-  const colors = [0xf2e6a8, 0xf0c8d4, 0xe8e8ec, 0xd9a6c4, 0xf7f0c0];
+  const colors = [0xf2d04a, 0xf0728c, 0xe8e8ec, 0xd36fc4, 0xf79a3c, 0x7fa0e0, 0xe85b5b];
 
   const group = new THREE.Group();
   let n = 0, guard = 0;
