@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
 
+# 串行化部署，避免连续提交并发抢 ref 导致 gh-pages 推送被拒
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
