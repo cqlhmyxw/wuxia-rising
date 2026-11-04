@@ -51,21 +51,30 @@ document.getElementById('jumpBtn').addEventListener('pointerdown', (e) => {
 // 提示条 12 秒后淡出
 setTimeout(() => { const c = document.getElementById('ctrl'); if (c) c.style.opacity = '0'; }, 12000);
 
-import { boot } from './js/main.js';
-try {
-  boot();
-  document.title = '江湖山庄 · 运行中';
-  const l = document.getElementById('loading');
-  l.style.opacity = '0';
-  setTimeout(() => l.style.display = 'none', 700);
-} catch (e) {
-  document.title = '江湖山庄 · 启动失败';
+function showErr(msg) {
+  document.title = 'ERR ' + msg;
   const el = document.getElementById('err');
-  el.style.display = 'flex'; el.textContent = '启动失败：' + (e && e.message || e);
-  document.getElementById('loading').style.display = 'none';
-  console.error(e);
+  el.style.display = 'flex';
+  el.textContent = '启动失败：' + msg;
+  const l = document.getElementById('loading');
+  if (l) l.style.display = 'none';
 }
-window.addEventListener('error', e => { document.title = '江湖山庄 · 运行错误'; });
+window.addEventListener('error', e => { document.title = 'RUNERR ' + ((e.message) || ''); });
+import('./js/main.js?v=12').then(m => {
+  try {
+    m.boot();
+    document.title = '江湖山庄 · 运行中';
+    const l = document.getElementById('loading');
+    l.style.opacity = '0';
+    setTimeout(() => l.style.display = 'none', 700);
+  } catch (e) {
+    showErr((e && (e.stack || e.message)) || String(e));
+    console.error(e);
+  }
+}).catch(e => {
+  showErr('模块加载失败: ' + ((e && e.message) || e));
+  console.error(e);
+});
 
 // 自检：URL 带 ?snap=<角度> 时，4.5s 后回传一张截图到本地接收器
 if (location.search.includes('snap') && window.__snap) {
