@@ -1,113 +1,116 @@
-// 角色：骨骼蒙皮人形（Soldier.glb，自带 Idle/Walk/Run 动作捕捉动画）
-// 接口与旧手写几何版一致：buildCharacter() -> { group, update(t, dt, moving, airborne, running) }
+// 角色：程序化武侠/仙侠形象（长袍 + 发髻 + 背后长剑），自带程序化走/跑/待机动作
+// 接口与旧版一致：buildCharacter() -> { group, update(t, dt, moving, airborne, running) }
+// 约定：角色正面朝 -Z（与 main.js 移动朝向公式 front=(-sinα,-cosα) 对齐）
 import * as THREE from 'three';
-import { GLTFLoader } from '../lib/GLTFLoader.js';
-
-// Soldier.glb 实测正面朝 -Z（three.js 官方示例相机即从 -Z 方向观看），
-// 故需补转 π 才能与移动朝向公式（rotation.y = atan2(mx, mz)）一致
-const MODEL_YAW = Math.PI;
 
 export function buildCharacter() {
   const group = new THREE.Group();
-  const inner = new THREE.Group(); // 前倾等程序化姿态挂在 inner，不干扰朝向
+  const inner = new THREE.Group(); // 呼吸/前倾挂这里，不干扰朝向
   group.add(inner);
 
-  let mixer = null;
-  const actions = {};
-  let current = null;
-  let ready = false;
+  const skin = new THREE.MeshStandardMaterial({ color: 0xe7c4a0, roughness: 0.85 });
+  const robe = new THREE.MeshStandardMaterial({ color: 0xeae5d7, roughness: 0.96 });
+  const robeDark = new THREE.MeshStandardMaterial({ color: 0xcfc9b6, roughness: 0.96 });
+  const sash = new THREE.MeshStandardMaterial({ color: 0x3c6f6a, roughness: 0.9 }); // 黛青腰带
+  const hair = new THREE.MeshStandardMaterial({ color: 0x26221e, roughness: 0.8 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0xc2cbd0, metalness: 0.55, roughness: 0.35 });
+  const wood = new THREE.MeshStandardMaterial({ color: 0x6b4a2a, roughness: 0.7 });
 
-  function play(name, fade = 0.22) {
-    if (!ready || !actions[name] || current === name) return;
-    const next = actions[name];
-    if (current && actions[current]) actions[current].fadeOut(fade);
-    next.reset().fadeIn(fade).play();
-    current = name;
+  // ---------- 长袍：LatheGeometry 旋成 vase 轮廓 ----------
+  const pts = [
+    new THREE.Vector2(0.0, 0.0),
+    new THREE.Vector2(0.44, 0.02),
+    new THREE.Vector2(0.47, 0.14),
+    new THREE.Vector2(0.40, 0.52),
+    new THREE.Vector2(0.30, 0.94),
+    new THREE.Vector2(0.26, 1.18),
+    new THREE.Vector2(0.30, 1.42),
+    new THREE.Vector2(0.21, 1.50),
+    new THREE.Vector2(0.11, 1.56),
+    new THREE.Vector2(0.0, 1.585),
+  ];
+  const robeMesh = new THREE.Mesh(new THREE.LatheGeometry(pts, 20), robe);
+  robeMesh.castShadow = true;
+  inner.add(robeMesh);
+
+  // 衣襟交叠（深一档）
+  const lapel = new THREE.Mesh(new THREE.CircleGeometry(0.12, 12, 0, Math.PI), robeDark);
+  lapel.position.set(0, 1.28, -0.27);
+  lapel.rotation.x = -Math.PI / 2 + 0.5;
+  inner.add(lapel);
+
+  // 腰带 + 垂穗
+  const belt = new THREE.Mesh(new THREE.TorusGeometry(0.30, 0.055, 8, 22), sash);
+  belt.position.y = 0.95; belt.rotation.x = Math.PI / 2; belt.castShadow = true;
+  inner.add(belt);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.5, 0.025), sash);
+  tail.position.set(0, 0.7, -0.29);
+  inner.add(tail);
+
+  // ---------- 头 / 发髻 ----------
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 18, 16), skin);
+  head.position.y = 1.74; head.castShadow = true;
+  inner.add(head);
+  const hairCap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.166, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.6), hair);
+  hairCap.position.y = 1.75;
+  inner.add(hairCap);
+  const bun = new THREE.Mesh(new THREE.SphereGeometry(0.10, 12, 10), hair);
+  bun.position.y = 1.90;
+  inner.add(bun);
+  const ribbon = new THREE.Mesh(new THREE.TorusGeometry(0.165, 0.02, 6, 18), sash);
+  ribbon.position.y = 1.82; ribbon.rotation.x = Math.PI / 2;
+  inner.add(ribbon);
+
+  // ---------- 手臂（肩为枢轴，便于摆动） ----------
+  function makeArm(side) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.27, 1.36, 0);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.055, 0.5, 8), robe);
+    upper.position.y = -0.25; upper.castShadow = true;
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), skin);
+    hand.position.y = -0.52;
+    pivot.add(upper, hand);
+    pivot.rotation.z = side * 0.16;
+    inner.add(pivot);
+    return pivot;
   }
+  const armL = makeArm(1), armR = makeArm(-1);
 
-  // 加载前的兜底占位：简单人形柱，避免空场景
-  const placeholder = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.26, 0.72, 4, 10),
-    new THREE.MeshLambertMaterial({ color: 0x54685a })
-  );
-  placeholder.position.y = 0.68;
-  placeholder.castShadow = true;
-  inner.add(placeholder);
+  // ---------- 背后长剑（背在 +Z = 角色背面，因正面朝 -Z） ----------
+  const sword = new THREE.Group();
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.0, 0.013), steel);
+  blade.position.y = 0.5;
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.03, 0.03), wood);
+  const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.16, 6), wood);
+  hilt.position.y = -0.08;
+  sword.add(blade, guard, hilt);
+  sword.position.set(0.0, 1.06, 0.22);
+  sword.rotation.x = -0.16; sword.rotation.z = 0.12;
+  sword.castShadow = true;
+  inner.add(sword);
 
-  new GLTFLoader().load(
-    'models/soldier.glb',
-    (gltf) => {
-      const model = gltf.scene;
-
-      // 尺寸：Soldier.glb 实际身高约 1.8 单位（蒙皮网格 Box3 不可靠，用已知值）
-      model.scale.setScalar(1.0);
-
-      // 统一上色：迷彩 → 灰度化后青灰色调（保留明暗细节=保留五官/衣褶），去现代感
-      model.traverse((o) => {
-        if (o.isMesh && o.material) {
-          o.castShadow = true; o.frustumCulled = false;
-          const mats = Array.isArray(o.material) ? o.material : [o.material];
-          const recolored = mats.map((m) => {
-            if (!m.map || !m.map.image) return m;
-            try {
-              const img = m.map.image;
-              const cv = document.createElement('canvas');
-              cv.width = img.width; cv.height = img.height;
-              const ctx = cv.getContext('2d');
-              // 色调滤镜：去迷彩饱和度、统一青灰调，保亮度（不 darken）
-              ctx.filter = 'grayscale(1) sepia(0.5) hue-rotate(165deg) saturate(0.75) brightness(1.0) contrast(0.96)';
-              ctx.drawImage(img, 0, 0, cv.width, cv.height);
-              const tex = new THREE.CanvasTexture(cv);
-              tex.colorSpace = THREE.SRGBColorSpace;
-              tex.flipY = m.map.flipY;
-              const nm = m.clone();
-              nm.map = tex; nm.roughness = 0.88; nm.metalness = 0.04;
-              return nm;
-            } catch (e) { return m; }
-          });
-          o.material = recolored.length === 1 ? recolored[0] : recolored;
-        } else if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; }
-      });
-
-      model.rotation.y = MODEL_YAW;
-      inner.add(model);
-      inner.remove(placeholder);
-      placeholder.geometry.dispose(); placeholder.material.dispose();
-
-      mixer = new THREE.AnimationMixer(model);
-      for (const clip of gltf.animations) {
-        const n = clip.name.toLowerCase();
-        if (n.includes('idle')) actions.idle = mixer.clipAction(clip);
-        else if (n.includes('walk')) actions.walk = mixer.clipAction(clip);
-        else if (n.includes('run')) actions.run = mixer.clipAction(clip);
-      }
-      if (actions.idle) { actions.idle.play(); current = 'idle'; }
-      // 移动速度加快后，同步动画播放速率，避免"脚底打滑"
-      if (actions.walk) actions.walk.timeScale = 1.35;
-      if (actions.run) actions.run.timeScale = 1.25;
-      ready = true;
-      document.title = document.title.replace('运行中', '运行中·角色就绪');
-    },
-    undefined,
-    (err) => { document.title = '江湖山庄 · 模型加载失败'; console.error('soldier.glb:', err); }
-  );
-
-  let lean = 0; // 空中前倾角
+  // ---------- 程序化动作 ----------
+  let phase = 0, lean = 0;
   function update(t, dt, moving, airborne, running) {
-    if (mixer) mixer.update(dt);
-    if (airborne) {
-      lean += (0.3 - lean) * 0.18; // 起跳后身体前倾
-    } else {
-      lean += (0 - lean) * 0.22;
-      if (moving) play(running ? 'run' : 'walk');
-      else play('idle');
-    }
+    const speed = running ? 14 : 9;
+    if (moving) phase += dt * speed;
+    // 待机呼吸
+    const breathe = Math.sin(t * 1.6) * 0.012;
+    inner.scale.set(1 + breathe * 0.35, 1 - breathe, 1 + breathe * 0.35);
+    // 摆臂 + 上下起伏
+    const sw = moving ? (running ? 0.95 : 0.55) : 0;
+    const a = Math.sin(phase);
+    armL.rotation.x = a * sw;
+    armR.rotation.x = -a * sw;
+    const bob = moving ? Math.abs(Math.sin(phase)) * (running ? 0.06 : 0.035) : 0;
+    inner.position.y = bob;
+    // 起跳前倾
+    if (airborne) lean += (0.32 - lean) * 0.2; else lean += (0 - lean) * 0.2;
     inner.rotation.x = -lean;
+    if (!moving) { armL.rotation.x *= 0.9; armR.rotation.x *= 0.9; }
   }
 
-  return {
-    group,
-    update,
-    get ready() { return ready; },
-  };
+  document.title = document.title.replace('运行中', '运行中·侠客就绪');
+  return { group, update, ready: true };
 }
