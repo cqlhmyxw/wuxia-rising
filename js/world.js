@@ -5,7 +5,7 @@ import {
   makeGrassField, makeFlowers, makeReeds, makeLilies, makeButterflies,
   makePetals, makeBirds,
   updateFoliage, makeDirtPatch, bindTerrainHeight
-} from './flora.js';
+} from './flora.js?v=12';
 
 export const POND = { x: 35, z: -18, r: 11.5, waterY: -0.55 };
 export const colliders = []; // {x,z,r}
@@ -253,15 +253,15 @@ export function buildWorld(scene) {
   }
   // 拱桥
   const bridge = new THREE.Group();
-  const stoneMat = new THREE.MeshStandardMaterial({ color: 0x9a9282, roughness: 0.95 });
+  const bridgeStone = new THREE.MeshStandardMaterial({ color: 0x9a9282, roughness: 0.95 });
   const R = 2.4, tube = 0.26;
-  bridge.add(new THREE.Mesh(new THREE.TorusGeometry(R, tube, 10, 28, Math.PI), stoneMat));
+  bridge.add(new THREE.Mesh(new THREE.TorusGeometry(R, tube, 10, 28, Math.PI), bridgeStone));
   for (const dz of [-0.55, 0.55]) {
-    const rail = new THREE.Mesh(new THREE.TorusGeometry(R, 0.05, 6, 28, Math.PI), stoneMat);
+    const rail = new THREE.Mesh(new THREE.TorusGeometry(R, 0.05, 6, 28, Math.PI), bridgeStone);
     rail.position.set(0, 0.55, dz); bridge.add(rail);
     for (let i = 0; i <= 6; i++) {
       const th = Math.PI * i / 6;
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.55, 0.07), stoneMat);
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.55, 0.07), bridgeStone);
       post.position.set(Math.cos(th) * R, Math.sin(th) * R + 0.55, dz);
       bridge.add(post);
     }
