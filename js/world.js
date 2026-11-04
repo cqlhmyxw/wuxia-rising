@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   makePine, makeBroadleaf, makeBamboo, makeShrub, makeRock,
   makeGrassField, makeFlowers, makeReeds, makeLilies, makeButterflies,
+  makePetals, makeBirds,
   updateFoliage, makeDirtPatch, bindTerrainHeight
 } from './flora.js';
 
@@ -40,9 +41,9 @@ function terrainColor(x, z, y, out) {
   // 池边 → 沙岸
   const pd = Math.sqrt((x - POND.x) ** 2 + (z - POND.z) ** 2);
   if (pd < POND.r + 4) { const t = 1 - smooth(POND.r + 1, POND.r + 4, pd); cr = cr * (1 - t) + 0.78 * t; cg = cg * (1 - t) + 0.70 * t; cb = cb * (1 - t) + 0.52 * t; }
-  // 远处 → 融进天青（青绿山水的"空气透视"）
-  const far = smooth(78, 118, r) * 0.72;
-  const FOG = { r: 0.68, g: 0.78, b: 0.83 };
+  // 远处 → 融进暖绿天色（江南烟雨的"空气透视"）
+  const far = smooth(70, 115, r) * 0.85;
+  const FOG = { r: 0.80, g: 0.875, b: 0.83 };
   cr = cr * (1 - far) + FOG.r * far;
   cg = cg * (1 - far) + FOG.g * far;
   cb = cb * (1 - far) + FOG.b * far;
@@ -76,9 +77,9 @@ export function buildWorld(scene) {
   // ---------- 远山剪影（三层，越远越淡） ----------
   const farRocks = [];
   const ridgeLayers = [
-    { r0: 96, r1: 118, hMin: 16, hMax: 30, color: 0x6f8f8a, op: 1, n: 16 },
-    { r0: 128, r1: 152, hMin: 22, hMax: 42, color: 0x8fa9a6, op: 1, n: 18 },
-    { r0: 162, r1: 195, hMin: 30, hMax: 56, color: 0xa8bfc0, op: 1, n: 20 },
+    { r0: 96, r1: 118, hMin: 16, hMax: 30, color: 0x8fae8a, op: 1.0, n: 16 },
+    { r0: 128, r1: 152, hMin: 22, hMax: 42, color: 0xa9c2a4, op: 0.9, n: 18 },
+    { r0: 162, r1: 195, hMin: 30, hMax: 56, color: 0xc2d4bd, op: 0.78, n: 20 },
   ];
   for (const L of ridgeLayers) {
     for (let i = 0; i < L.n; i++) {
@@ -88,7 +89,7 @@ export function buildWorld(scene) {
       const w = rnd(28, 58);
       const cone = new THREE.Mesh(
         new THREE.ConeGeometry(w, h, 5 + (Math.random() * 3 | 0), 1),
-        new THREE.MeshStandardMaterial({ color: L.color, roughness: 1, flatShading: true, fog: true })
+        new THREE.MeshStandardMaterial({ color: L.color, roughness: 1, flatShading: true, transparent: true, opacity: L.op })
       );
       cone.position.set(Math.cos(a) * d, h * 0.32 - 4, Math.sin(a) * d);
       cone.rotation.y = Math.random() * Math.PI * 2;
@@ -98,11 +99,22 @@ export function buildWorld(scene) {
     }
   }
 
-  // ---------- 池塘水面 ----------
+  // ---------- 池塘水面：渐变天光倒影（近岸浅绿 → 中央深碧），低粗糙模拟水镜 ----------
+  const waterCanvas = document.createElement('canvas');
+  waterCanvas.width = 16; waterCanvas.height = 128;
+  const wctx = waterCanvas.getContext('2d');
+  const wgrad = wctx.createLinearGradient(0, 0, 0, 128);
+  wgrad.addColorStop(0, '#cfe6df');
+  wgrad.addColorStop(0.5, '#7fb6b0');
+  wgrad.addColorStop(1, '#2f6f72');
+  wctx.fillStyle = wgrad; wctx.fillRect(0, 0, 16, 128);
+  const waterTex = new THREE.CanvasTexture(waterCanvas);
+  waterTex.colorSpace = THREE.SRGBColorSpace;
+  waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping;
   const waterGeo = new THREE.CircleGeometry(POND.r, 56);
   waterGeo.rotateX(-Math.PI / 2);
   const water = new THREE.Mesh(waterGeo, new THREE.MeshStandardMaterial({
-    color: 0x4a7c88, transparent: true, opacity: 0.86, roughness: 0.12, metalness: 0.2
+    map: waterTex, transparent: true, opacity: 0.92, roughness: 0.08, metalness: 0.35
   }));
   water.position.set(POND.x, POND.waterY, POND.z);
   scene.add(water);
@@ -148,12 +160,15 @@ export function buildWorld(scene) {
     addTree(makeShrub(rnd(0.85, 1.4)), x, z, 0);
   }
 
-  // ---------- 竹林（东北角） ----------
-  for (let i = 0; i < 12; i++) {
-    const a = -0.55 + Math.random() * 0.55, d = 30 + Math.random() * 15;
-    const x = Math.cos(a) * d + 6, z = Math.sin(a) * d - 26;
-    addTree(makeBamboo(3 + (Math.random() * 3 | 0)), x, z, 0.7);
+  // ---------- 竹林（东北角 + 湖西，成片） ----------
+  function plantGrove(cx, cz, n, spread) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, d = spread * Math.sqrt(Math.random());
+      addTree(makeBamboo(3 + (Math.random() * 4 | 0)), cx + Math.cos(a) * d, cz + Math.sin(a) * d, 0.6);
+    }
   }
+  plantGrove(8, -44, 16, 7);                  // 东北角竹丛
+  plantGrove(POND.x - 9, POND.z - 6, 12, 6);  // 湖西竹丛
 
   // ---------- 外围林带（高低错落：高直松 / 高大阔叶 / 矮丛） ----------
   for (let i = 0; i < 150; i++) {
@@ -202,7 +217,7 @@ export function buildWorld(scene) {
     if (pd < POND.r + 0.6) return null;
     return { x, y: terrainHeight(x, z), z };
   };
-  makeGrassField(scene, grassSamples, 2400);
+  makeGrassField(scene, grassSamples, 8000);
   makeFlowers(scene, () => {
     const p = grassSamples();
     if (!p) return null;
@@ -215,6 +230,46 @@ export function buildWorld(scene) {
   makeReeds(scene, POND.x, POND.z, POND.r, 52);
   makeLilies(scene, POND.x, POND.z, POND.r, 26);
 
+  // ---------- 溪涧 + 拱桥（从镜湖引出） ----------
+  const streamLen = 11, streamW = 3;
+  const streamGeo = new THREE.PlaneGeometry(streamLen, streamW);
+  streamGeo.rotateX(-Math.PI / 2);
+  const stream = new THREE.Mesh(streamGeo, new THREE.MeshStandardMaterial({
+    map: waterTex, transparent: true, opacity: 0.9, roughness: 0.1, metalness: 0.3
+  }));
+  const sx = POND.x + POND.r + streamLen / 2 - 1;
+  const sz = POND.z + 1.5;
+  stream.position.set(sx, POND.waterY + 0.02, sz);
+  scene.add(stream);
+  // 溪岸石
+  for (let i = 0; i < 14; i++) {
+    const t = i / 14;
+    const x = POND.x + POND.r - 1 + t * streamLen;
+    for (const dz of [-streamW / 2 - 0.4, streamW / 2 + 0.4]) {
+      const rk = makeRock(rnd(0.5, 1.1));
+      rk.position.set(x, POND.waterY + 0.05, sz + dz);
+      scene.add(rk);
+    }
+  }
+  // 拱桥
+  const bridge = new THREE.Group();
+  const stoneMat = new THREE.MeshStandardMaterial({ color: 0x9a9282, roughness: 0.95 });
+  const R = 2.4, tube = 0.26;
+  bridge.add(new THREE.Mesh(new THREE.TorusGeometry(R, tube, 10, 28, Math.PI), stoneMat));
+  for (const dz of [-0.55, 0.55]) {
+    const rail = new THREE.Mesh(new THREE.TorusGeometry(R, 0.05, 6, 28, Math.PI), stoneMat);
+    rail.position.set(0, 0.55, dz); bridge.add(rail);
+    for (let i = 0; i <= 6; i++) {
+      const th = Math.PI * i / 6;
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.55, 0.07), stoneMat);
+      post.position.set(Math.cos(th) * R, Math.sin(th) * R + 0.55, dz);
+      bridge.add(post);
+    }
+  }
+  bridge.position.set(sx, POND.waterY + 0.05, sz);
+  bridge.rotation.y = Math.PI / 2; // 桥跨过溪（溪沿 x 向，桥沿 z 向）
+  scene.add(bridge);
+
   // ---------- 蝴蝶 ----------
   const butterflyAnchors = [];
   for (let i = 0; i < 6; i++) {
@@ -224,15 +279,22 @@ export function buildWorld(scene) {
   }
   const butterflies = makeButterflies(scene, butterflyAnchors);
 
+  // ---------- 落英 + 飞鸟 ----------
+  const petals = makePetals(scene, 90);
+  const birds = makeBirds(scene, 3);
+
   // ---------- 每帧动画 ----------
   let tAcc = 0;
   world.animate = (t, dt) => {
     tAcc += dt;
     water.position.y = POND.waterY + Math.sin(t * 0.7) * 0.028;
+    waterTex.rotation += dt * 0.04;
     const s = (t * 0.22) % 1;
     ripple.scale.setScalar(1 + s * 10);
     ripple.material.opacity = 0.3 * (1 - s);
     butterflies.update(t);
+    petals.update(t, dt);
+    birds.update(t);
     updateFoliage(t);
   };
 }
