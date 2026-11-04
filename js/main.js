@@ -8,9 +8,11 @@ import { buildCharacter } from './character.js';
 export function boot() {
   // ---------- 渲染基础 ----------
   const SNAP_MODE = location.search.includes('snap');
+  const params = new URLSearchParams(location.search);
+  const maxDpr = params.get('dpr') ? Math.max(1, Math.min(2, +params.get('dpr'))) : 2;
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: SNAP_MODE });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxDpr));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -55,7 +57,7 @@ export function boot() {
   const player = character.group;
   const SPAWN = { x: 0, z: 18 };
   player.position.set(SPAWN.x, terrainHeight(SPAWN.x, SPAWN.z), SPAWN.z);
-  player.rotation.y = 0; // 模型正面为 -Z（已在 character.js 内补转 π），此处 0 即面向 +z 山门
+  player.rotation.y = Math.PI; // 面向 +z 山门（正面 -Z 经 π 旋转指向 +z）
   scene.add(player);
 
   // ---------- 修炼 ----------
@@ -143,7 +145,7 @@ export function boot() {
     return true;
   }
 
-  let playerAngle = 0;
+  let playerAngle = Math.PI;
   const JUMP_V = 5.6, GRAVITY = 17.5;
   let vy = 0, jumpY = 0, airborne = false;
   let moving = false;
@@ -179,7 +181,9 @@ export function boot() {
         if (tryMove(nx, player.position.z)) player.position.x = nx;
         if (tryMove(player.position.x, nz)) player.position.z = nz;
 
-        const ta = Math.atan2(mx / len, mz / len);
+        // 角色正面朝 -Z，经旋转 α 后世界朝向量为 (-sinα, -cosα)，
+        // 令其等于移动方向 (mx,mz) → α = atan2(-mx, -mz)
+        const ta = Math.atan2(-(mx / len), -(mz / len));
         let diff = ta - playerAngle;
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
@@ -204,7 +208,7 @@ export function boot() {
     player.position.y = groundY + jumpY + sitDrop;
 
     character.update(t, dt, moving, airborne, running);
-    if (meditation.sitting) player.rotation.y = playerAngle = 0; // 打坐面向山门
+    if (meditation.sitting) player.rotation.y = playerAngle = Math.PI; // 打坐面向山门
 
     playerToCushion = Math.hypot(player.position.x - pavilion.cushionPos.x, player.position.z - pavilion.cushionPos.z);
     meditation.update(t, dt, playerToCushion);
