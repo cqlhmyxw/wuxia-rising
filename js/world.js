@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {
   makePine, makeBroadleaf, makeBamboo, makeShrub, makeRock,
   makeGrassField, makeFlowers, makeReeds, makeLilies, makeButterflies,
-  updateFoliage
+  updateFoliage, makeDirtPatch, bindTerrainHeight
 } from './flora.js';
 
 export const POND = { x: 35, z: -18, r: 11.5, waterY: -0.55 };
@@ -52,6 +52,7 @@ function terrainColor(x, z, y, out) {
 const rnd = (a, b) => a + Math.random() * (b - a);
 
 export function buildWorld(scene) {
+  bindTerrainHeight(terrainHeight);
   // ---------- 地形 ----------
   const SIZE = 260, SEG = 150;
   const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
@@ -131,12 +132,12 @@ export function buildWorld(scene) {
     if (collR) colliders.push({ x, z, r: collR });
   }
 
-  addTree(makeBroadleaf(1.25), -14, 8, 0.7);
-  addTree(makeBroadleaf(1.35), 14, 10, 0.7);
-  addTree(makePine(1.1), -16, -4, 0.6);
-  addTree(makeBroadleaf(1.0), 12, -6, 0.6);
-  addTree(makePine(1.25), 18, -30, 0.65);
-  addTree(makeBroadleaf(1.1), -22, 16, 0.65);
+  addTree(makeBroadleaf(1.7), -14, 8, 0.8);
+  addTree(makeBroadleaf(1.9), 14, 10, 0.8);
+  addTree(makePine(1.5), -16, -4, 0.7);
+  addTree(makeBroadleaf(1.4), 12, -6, 0.7);
+  addTree(makePine(1.7), 18, -30, 0.75);
+  addTree(makeBroadleaf(1.5), -22, 16, 0.75);
 
   // 围墙边灌木
   for (let i = 0; i < 16; i++) {
@@ -154,31 +155,39 @@ export function buildWorld(scene) {
     addTree(makeBamboo(3 + (Math.random() * 3 | 0)), x, z, 0.7);
   }
 
-  // ---------- 外围林带 ----------
-  for (let i = 0; i < 96; i++) {
+  // ---------- 外围林带（高低错落：高直松 / 高大阔叶 / 矮丛） ----------
+  for (let i = 0; i < 150; i++) {
     const a = Math.random() * Math.PI * 2, d = 32 + Math.random() * 62;
     const x = Math.cos(a) * d, z = Math.sin(a) * d;
     if (Math.sqrt((x - POND.x) ** 2 + (z - POND.z) ** 2) < POND.r + 5) continue;
-    if (Math.random() < 0.55) addTree(makePine(0.85 + Math.random() * 0.9), x, z, 0.55);
-    else addTree(makeBroadleaf(0.85 + Math.random() * 0.8), x, z, 0.6);
+    const r = Math.random();
+    if (r < 0.3) addTree(makePine(1.3 + Math.random() * 0.7), x, z, 0.6);      // 高直松树
+    else if (r < 0.55) addTree(makePine(0.8 + Math.random() * 0.6), x, z, 0.55);
+    else if (r < 0.8) addTree(makeBroadleaf(1.2 + Math.random() * 0.6), x, z, 0.65); // 高大阔叶
+    else addTree(makeBroadleaf(0.7 + Math.random() * 0.5), x, z, 0.6);          // 矮丛
   }
 
   // ---------- 池边石 ----------
-  for (let i = 0; i < 30; i++) {
-    const a = Math.random() * Math.PI * 2, d = POND.r + rnd(0.4, 3.2);
+  for (let i = 0; i < 60; i++) {
+    const a = Math.random() * Math.PI * 2, d = POND.r + rnd(0.4, 3.6);
     const x = POND.x + Math.cos(a) * d, z = POND.z + Math.sin(a) * d;
-    const rk = makeRock(rnd(0.7, 1.5));
-    rk.position.set(x, POND.waterY + rnd(0.02, 0.16), z);
+    const rk = makeRock(rnd(0.6, 1.7));
+    rk.position.set(x, POND.waterY + rnd(0.02, 0.18), z);
     scene.add(rk);
   }
   // 山上散石
-  for (let i = 0; i < 22; i++) {
+  for (let i = 0; i < 45; i++) {
     const a = Math.random() * Math.PI * 2, d = rnd(40, 95);
     const x = Math.cos(a) * d, z = Math.sin(a) * d;
-    const rk = makeRock(rnd(0.9, 2.0));
+    const rk = makeRock(rnd(0.9, 2.2));
     rk.position.set(x, terrainHeight(x, z) + 0.05, z);
     scene.add(rk);
   }
+
+  // ---------- 泥土斑块（造田/水岸裸露泥地） ----------
+  makeDirtPatch(scene, 9, 30, 3.2);                 // 庄前空地
+  makeDirtPatch(scene, POND.x + 5, POND.z + POND.r + 5, 3.0); // 湖畔
+  makeDirtPatch(scene, -22, -8, 2.6);               // 西隅
 
   // ---------- 草与花 ----------
   const grassSamples = () => {
@@ -200,7 +209,7 @@ export function buildWorld(scene) {
     const r = Math.sqrt(p.x * p.x + p.z * p.z);
     if (r < PLAZA_R + 2) return null;
     return p;
-  }, 200);
+  }, 520);
 
   // ---------- 池中与池边 ----------
   makeReeds(scene, POND.x, POND.z, POND.r, 52);
