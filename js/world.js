@@ -5,7 +5,7 @@ import {
   makeGrassField, makeFlowers, makeReeds, makeLilies, makeButterflies,
   makePetals, makeBirds,
   updateFoliage, makeDirtPatch, bindTerrainHeight
-} from './flora.js?v=12';
+} from './flora.js?v=13';
 
 export const POND = { x: 35, z: -18, r: 11.5, waterY: -0.55 };
 export const colliders = []; // {x,z,r}
